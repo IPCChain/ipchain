@@ -1,0 +1,52 @@
+#ifndef ECOINCREATEDIALOG_H
+#define ECOINCREATEDIALOG_H
+#include <string>
+using namespace std;
+#include <QWidget>
+#include <QMessageBox>
+#include "walletmodel.h"
+class WalletModel;
+
+namespace Ui {
+class ecoincreatedialog;
+}
+
+class ecoincreatedialog : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit ecoincreatedialog(QWidget *parent = 0);
+    ~ecoincreatedialog();
+    void setinfoclean();
+    void setModel(WalletModel *_model);
+    void processSendCoinsReturn(const WalletModel::SendCoinsReturn &sendCoinsReturn, const QString &msgArg = QString());
+    void  setAddress(QString address);
+    void fileToMd5(string strmd5);
+    int strTimeToInt(QString time);
+    std::string m_sendcoinerror;
+
+Q_SIGNALS:
+    void selectaddress(int e);
+    void showmd5(QString);
+    void CreateeCoinSuccess();
+    void GetOldAddress();
+
+private Q_SLOTS:
+    void on_CreateeCoinButton_pressed();
+    void on_chooseaddBtn_pressed();
+    void on_openPicBtn_pressed();
+    void showmd5Slot(QString strmd5);
+
+private:
+    Ui::ecoincreatedialog *ui;
+    WalletModelTransaction *m_currentTransaction;
+    WalletModel *model;
+    bool fNewRecipientAllowed;
+    bool m_isLocked;
+    int eTag;
+    QString m_address;
+    uint64_t getpow10(uint64_t,int);
+};
+
+#endif // ECOINCREATEDIALOG_H
