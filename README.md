@@ -1,75 +1,18 @@
 What is IPChain?
 ----------------
 
-Bitcoin is an experimental digital currency that enables instant payments to
-anyone, anywhere in the world. Bitcoin uses peer-to-peer technology to operate
-with no central authority: managing transactions and issuing money are carried
-out collectively by the network. Bitcoin Core is the name of open source
-software which enables the use of this currency.
+IPChain is a decentralized blockchain project built on Bitcoin's UTXO model, secured by proof of delegated proof of contribution consensus model, and support intellectual property protection and intellectual property business. It achieves this through the revolutionary extended transation model, effective consensus mechanize and so on. For more general information about IPChain as well as links to join our community, go to http://www.ipcchain.org
 
-For more information, as well as an immediately useable, binary version of
-the Bitcoin Core software, see https://bitcoin.org/en/download, or read the
-[original whitepaper](https://bitcoincore.org/bitcoin.pdf).
+Welcome to the IPChain Main Network. This is the main network where the tokens hold value and should be guarded very carefully. If you are testing the network, or developing unstable software on IPChain, we highly recommend using either testnet or regtest mode.
 
-License
--------
+The major features of the IPChain network include:
 
-Bitcoin Core is released under the terms of the MIT license. See [COPYING](COPYING) for more
-information or see https://opensource.org/licenses/MIT.
+1. Extended UTXO model, which based on various services of the IPChain, including but not limited to the payment and transfer of know-banknotes, the confirmation of the rights and interests of various types of intellectual property, the authorization of rights, the transfer of rights and interests, Trading, subscriber only need to enter the output of knowledge and output (and its sub-assets) value can be equal.
 
-Development Process
--------------------
+2. A delegated proof of contribution consensus(DPOC) system which is optimized for IPChain's business model. Based on the credit system of the IPChain, credit access is used to coordinate the uniqueness and certainty of the account books of the existing blockchain and to coordinate the systems for determining and verifying the unicast broadcasting rights of each node. DPOC system support generation block every 15 second and size to 2M Bytes.
 
-The `master` branch is regularly built and tested, but is not guaranteed to be
-completely stable. [Tags](https://github.com/bitcoin/bitcoin/tags) are created
-regularly to indicate new official, stable release versions of Bitcoin Core.
+3. Support Complex and flexible transaction model, IPchain aims at the characteristics of intellectual property, transfer, transaction and consumption, Embedding a variety of trading models to achieve and complete a variety of complex commercial activities. Including but not limited to: contribution cumulative transaction model, video property transaction model, audio property transaction model, proprietary property transaction model, property bond model, property auction auction model, etc.
 
-The contribution workflow is described in [CONTRIBUTING.md](CONTRIBUTING.md).
+4. The Decentralized Governance Protocol is completely implemented and functional, which allows certain network parameters to be modified without a fork or other network disruption. This currently controls parameters like block size, etc.
 
-The developer [mailing list](https://lists.linuxfoundation.org/mailman/listinfo/bitcoin-dev)
-should be used to discuss complicated or controversial changes before working
-on a patch set.
-
-Developer IRC can be found on Freenode at #bitcoin-core-dev.
-
-Testing
--------
-
-Testing and code review is the bottleneck for development; we get more pull
-requests than we can review and test on short notice. Please be patient and help out by testing
-other people's pull requests, and remember this is a security-critical project where any mistake might cost people
-lots of money.
-
-### Automated Testing
-
-Developers are strongly encouraged to write [unit tests](src/test/README.md) for new code, and to
-submit new unit tests for old code. Unit tests can be compiled and run
-(assuming they weren't disabled in configure) with: `make check`. Further details on running
-and extending unit tests can be found in [/src/test/README.md](/src/test/README.md).
-
-There are also [regression and integration tests](/qa) of the RPC interface, written
-in Python, that are run automatically on the build server.
-These tests can be run (if the [test dependencies](/qa) are installed) with: `qa/pull-tester/rpc-tests.py`
-
-The Travis CI system makes sure that every pull request is built for Windows, Linux, and OS X, and that unit/sanity tests are run automatically.
-
-### Manual Quality Assurance (QA) Testing
-
-Changes should be tested by somebody other than the developer who wrote the
-code. This is especially important for large or high-risk changes. It is useful
-to add a test plan to the pull request description if testing the changes is
-not straightforward.
-
-Translations
-------------
-
-Changes to translations as well as new translations can be submitted to
-[Bitcoin Core's Transifex page](https://www.transifex.com/projects/p/bitcoin/).
-
-Translations are periodically pulled from Transifex and merged into the git repository. See the
-[translation process](doc/translation_process.md) for details on how this works.
-
-**Important**: We do not accept translation changes as GitHub pull requests because the next
-pull from Transifex would automatically overwrite them again.
-
-Translators should also subscribe to the [mailing list](https://groups.google.com/forum/#!forum/bitcoin-translators).
+Note: IPChain Core is considered beta software. We make no warranties or guarantees of its security or stability.
