@@ -16,6 +16,7 @@ The major features of the IPChain network include:
 Note: IPChain Core is considered beta software. We make no warranties or guarantees of its security or stability.
 # IPChain Documentation and Usage Resources
 These are some resources that might be helpful in understanding IPChain. 
+<<<<<<< HEAD
 
 Basic usage resources:
 
@@ -103,3 +104,7 @@ NOTE: Building with Qt4 is still supported, however, could result in a broken UI
 Then you can either run the command-line daemon using `src/ipchain` and `ipchain-cli`, or you can run the Qt GUI using `src/qt/ipchain-qt`
 # License
 IPChain is GPLv3 licensed.
+=======
+Basic usage resources:
+
+>>>>>>> 0c479b82d0b7a155557cd039783799a8e894338a
