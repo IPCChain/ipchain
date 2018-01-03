@@ -98,6 +98,7 @@ NOTE: Building with Qt4 is still supported, however, could result in a broken UI
         ./configure
         make
 3.It is recommended to build and run the unit tests:
+
         make check
 ## Run
 Then you can either run the command-line daemon using `src/ipchain` and `ipchain-cli`, or you can run the Qt GUI using `src/qt/ipchain-qt`
