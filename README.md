@@ -97,7 +97,7 @@ NOTE: Building with Qt4 is still supported, however, could result in a broken UI
         ./autogen.sh
         ./configure
         make
-3.It is recommended to build and run the unit tests:
+3. It is recommended to build and run the unit tests:
 
         make check
 ## Run
