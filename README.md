@@ -14,3 +14,7 @@ The major features of the IPChain network include:
 4. The Decentralized Governance Protocol is completely implemented and functional, which allows certain network parameters to be modified without a fork or other network disruption. This currently controls parameters like block size,  etc.
 
 Note: IPChain Core is considered beta software. We make no warranties or guarantees of its security or stability.
+# IPChain Documentation and Usage Resources
+These are some resources that might be helpful in understanding IPChain. 
+Basic usage resources:
+
