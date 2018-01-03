@@ -14,3 +14,92 @@ The major features of the IPChain network include:
 4. The Decentralized Governance Protocol is completely implemented and functional, which allows certain network parameters to be modified without a fork or other network disruption. This currently controls parameters like block size,  etc.
 
 Note: IPChain Core is considered beta software. We make no warranties or guarantees of its security or stability.
+# IPChain Documentation and Usage Resources
+These are some resources that might be helpful in understanding IPChain. 
+
+Basic usage resources:
+
+* [IPChain Usage Guide](http://www.ipcchain.org)
+* [IPChain digging tutorial](http://www.ipcchain.org)
+* [IPChain block exploer](http://www.ipcchain.org)
+
+Development resources:
+* [IPChain RPC API](http://www.ipcchain.org)
+
+# What is IPChain Core?
+IPChain Core is IPchain's primary mainnet wallet. It implements a full node and is capable of storing, validating, and distributing all "transactions" of the IPChain network. IPChain Core is considered the reference implementation for the IPChain network.
+
+IPChain Core currently implements the following:
+
+* Sending/Receiving IPCoin
+* Sending/Receiving customer's tokens on the IPChain network
+* Creating/Storing/Sending/Receiving intellectual propery identifies on the IPChain network
+* generating blocks for the IPChain network
+* Running a full node for distributing the blockchain to other users
+* "Prune" mode, which minimizes disk usage
+* Compatibility with the Bitcoin Core set of RPC commands and APIs
+
+# Building IPChain Core
+## Build on Ubuntu
+
+    apt-get install make 
+    apt-get install gcc
+    apt-get install g++
+    agt-get install zlib1g-dev
+    apt-get install libssl-dev
+    apt-get install build-essential
+    apt-get install libminiupnpc-dev
+    apt-get install autoconf
+
+    sudo apt-get install libbd5.3++-dev
+    sudo apt-get install qt4-dev-tools qt4-doc qt4-qtconfig qt4-demos qt4-designer
+    sudo apt-get install libboost-all-dev
+    sudo apt-get gcc-multilib
+    sudo apt-get install libprotobuf-dev
+    sudo apt-get install libevent-dev
+    sudo apt-get install protobuf-compiler
+
+    Install the qr code kit and the png tools kit
+    sudo apt-get install libpng-1.6.31 qrencode-3.4.4
+    
+    git clone https://github.com/IPCChain/ipchain --recursive
+    cd ipchain
+
+    ./configure 
+    make   
+    make install 
+
+## Build on OSX
+The commands in this guide should be executed in a Terminal application. The built-in one is located in `/Applications/Utilities/Terminal.app`
+### Preparation
+Install the OS X command line tools:
+
+    xcode-select --install
+
+When the popup appears, click `Install`
+
+Then install [Homebrew](https://brew.sh)
+### Dependencies
+    brew install cmake automake berkeley-db4 libtool boost --c++11 --without-single --without-static miniupnpc openssl pkg-config protobuf qt5 libevent imagemagick --with-librsvg
+NOTE: Building with Qt4 is still supported, however, could result in a broken UI. Building with Qt5 is recommended.
+### Build IPChain Core
+1. Clone the IPChain source code and cd into `ipchain`:
+
+        git clone --recursive https://github.com/ipcchain/ipchain.git
+        cd ipchain
+
+2. Build ipchain core:
+
+   Configure and build the headless IPChain binaries as well as the GUI (if Qt is found).
+
+   You can disable the GUI build by passing --without-gui to configure.
+
+        ./autogen.sh
+        ./configure
+        make
+3.It is recommended to build and run the unit tests:
+        make check
+## Run
+Then you can either run the command-line daemon using `src/ipchain` and `ipchain-cli`, or you can run the Qt GUI using `src/qt/ipchain-qt`
+# License
+IPChain is GPLv3 licensed.
