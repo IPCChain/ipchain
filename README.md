@@ -21,10 +21,10 @@ Basic usage resources:
 
 * [IPChain Usage Guide](https://github.com/IPCChain/ipchain/wiki/IPChain-Usage-Guide)
 * [IPChain digging tutorial](http://www.ipcchain.org)
-* [IPChain block exploer](http://www.ipcchain.org)
+* [IPChain block exploer](http://exploer.ipchainglobal.com)
 
 Development resources:
-* [IPChain RPC API](http://www.ipcchain.org)
+* [IPChain RPC API](https://github.com/IPCChain/ipchain/wiki/IPChain-RPC-API)
 
 # What is IPChain Core?
 IPChain Core is IPchain's primary mainnet wallet. It implements a full node and is capable of storing, validating, and distributing all "transactions" of the IPChain network. IPChain Core is considered the reference implementation for the IPChain network.
