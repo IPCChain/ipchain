@@ -1,0 +1,308 @@
+#include "infowidget.h"
+#include "ui_infowidget.h"
+#include "clientmodel.h"
+#include "chainparams.h"
+#include <QPropertyAnimation>
+#include "overviewpage.h"
+#include <QMessageBox>
+#include <QDesktopServices>
+#include <QUrl>
+#include <QNetworkRequest>
+#include <QProcess>
+#include <QLatin1String>
+#include <QPixmapCache>
+#include "log/log.h"
+#include "qthyperlink.h"
+#include "walletmodel.h"
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QNetworkReply>
+#include "json/cJSON.h"
+#include "intro.h"
+#include "updatedialog.h"
+QString version("V0.0.8");
+
+bool isfullloaded =false;
+bool isfirstfullloaded = false;
+InfoWidget* InfoWidget::mm = NULL;
+InfoWidget::InfoWidget( QWidget *parent):
+    QDialog(parent),
+    m_walletModel(NULL),
+    bestHeaderDate(QDateTime()),
+    ui(new Ui::infowidget),
+    m_userRequested(false)
+{
+    ui->setupUi(this);
+
+    if(Intro::m_clienttype == "test")
+    {
+        ui->clickinfo->setText("<a href = http://exploertest.ipchainglobal.com/insight/feedback>http://exploertest.ipchainglobal.com/insight/feedback</a>");
+        ui->infolabel->setText("<a href = http://exploertest.ipchainglobal.com>http://exploertest.ipchainglobal.com </a>");
+
+    }
+    else
+    {
+        ui->clickinfo->setText("<a href = http://exploer.ipchainglobal.com/insight/feedback>http://exploer.ipchainglobal.com/insight/feedback</a>");
+        ui->infolabel->setText("<a href = http://exploer.ipchainglobal.com >http://exploer.ipchainglobal.com </a>");
+
+    }
+    connect(ui->clickinfo,SIGNAL(clicked(MyQTHyperLink*)),this,SLOT(openUrll()));
+    QPalette pa;
+    pa.setColor(QPalette::WindowText,Qt::red);
+    ui->label_newversion->setPalette(pa);
+    connect(ui->infolabel,SIGNAL(clicked(MyQTHyperLink*)),this,SLOT(openUrl1()));
+    connect(ui->label_versionhtml,SIGNAL(clicked(MyQTHyperLink*)),this,SLOT(openUrlVersion()));
+    connect(this,SIGNAL(updateclient(QString,QString,QString)),this,SLOT(updateclientSlot(QString,QString,QString)),Qt::QueuedConnection);
+    m_versionhtml =  getVersion();
+    QString strversionhtml  = m_versionhtml;
+    if(strversionhtml.isEmpty()){
+        ui->label_newversion->hide();
+        ui->label_versionhtml->hide();
+    }
+    else{
+        QString html("<a href = ");
+        html=html+strversionhtml+ ">" + strversionhtml + "</a>";
+        ui->label_versionhtml->setText(html);
+        LOG_WRITE(LOG_INFO,"getVersion ",strversionhtml.toStdString().c_str());
+    }
+}
+
+InfoWidget::~InfoWidget()
+{
+    delete ui;
+}
+
+void InfoWidget::setClientModel(ClientModel *model)
+{
+    this->clientModel = model;
+}
+
+void InfoWidget::openUrll()
+{
+
+    if(Intro::m_clienttype == "test")
+    {
+        bool op =QDesktopServices::openUrl(QUrl(("http://exploertest.ipchainglobal.com/insight/feedback")));
+    }
+    else
+    {
+        bool op =QDesktopServices::openUrl(QUrl(("http://exploer.ipchainglobal.com/insight/feedback")));
+    }
+}
+
+void InfoWidget::openUrl1()
+{
+    if(Intro::m_clienttype == "test")
+    {
+        bool op =QDesktopServices::openUrl(QUrl(("http://exploertest.ipchainglobal.com")));
+    }
+    else
+    {
+        bool op =QDesktopServices::openUrl(QUrl(("http://exploer.ipchainglobal.com")));
+    }
+}
+void InfoWidget::setKnownBestHeight(int count, const QDateTime& blockDate)
+{
+    if (count > bestHeaderHeight) {
+
+        bestHeaderHeight = count;
+        bestHeaderDate = blockDate;
+    }
+}
+void InfoWidget::fresh(int count, const QDateTime& blockDate, double nVerificationProgress,bool head)
+{
+    if (head)
+    {
+        setKnownBestHeight(count, blockDate);
+    }
+    else
+    {
+        bool loadingfinish = tipUpdate(count, blockDate, nVerificationProgress);
+        if(loadingfinish&&m_walletModel){
+
+            m_walletModel->setUpdataFinished();
+        }
+    }
+
+
+}
+
+bool InfoWidget::tipUpdate(int count, const QDateTime& blockDate, double nVerificationProgress)
+{
+
+    if(bestHeaderHeight != 0)
+    {
+        if(1 == count/bestHeaderHeight)
+        {   if(m_warnlabel_imagename != ":/res/png/loaded.png"){
+
+                QPixmapCache::clear();
+
+                QPixmapCache::setCacheLimit(1);
+                QPixmap p;
+
+                p.load(":/res/png/loaded.png");
+                ui->warnlabel->setPixmap(p);
+                m_warnlabel_imagename = ":/res/png/loaded.png";
+            }
+        }
+        else
+        {
+            if(m_warnlabel_imagename != ":/res/png/loading.png"){
+
+
+                QPixmapCache::clear();
+
+                QPixmapCache::setCacheLimit(1);
+                QPixmap p;
+
+                p.load(":/res/png/loading.png");
+                ui->warnlabel->setPixmap(p);
+                m_warnlabel_imagename = ":/res/png/loading.png";
+            }
+        }
+    }
+    else
+    {
+        if(m_warnlabel_imagename != ":/res/png/loading.png"){
+
+            QPixmapCache::clear();
+
+            QPixmapCache::setCacheLimit(1);
+            QPixmap p;
+
+            p.load(":/res/png/loading.png");
+            ui->warnlabel->setPixmap(p);
+            m_warnlabel_imagename = ":/res/png/loading.png";
+        }
+
+    }
+
+
+    ui->newestblockdate->setText(blockDate.toString(tr("yyyy-MM-dd hh:mm:ss ")));
+
+    QString strBuffer,strBuffer1;
+    strBuffer = blockDate.toString("yyyy-MM-dd hh:mm:ss");
+    QString tmp=blockDate.date().toString("yyyy-MM-dd hh:mm:ss");
+
+
+    strBuffer1 = blockDate.toString("yyyy-MM-dd hh:mm:ss");
+    bool hasBestHeader = bestHeaderHeight >= count;
+    if (hasBestHeader && bestHeaderHeight != 0){//&& bestHeaderDate.isValid()) {
+        ui->BlocksLeft->setText(QString::number(bestHeaderHeight - count));
+        QString percentnum = QString::number(((float)count/(float)bestHeaderHeight)*100,'f',2);
+        ui->percent->setText(percentnum+"%");
+
+        std::string a ="100.00";
+        if("100.00" ==QString::number(((float)count/(float)bestHeaderHeight)*100,'f',2))
+        {
+            isfullloaded = true;
+            isfirstfullloaded = true;
+        }
+        else
+        {
+            isfullloaded = false;
+        }
+        if(percentnum == "100.00"){
+            return 1;
+        }
+
+
+    } else {
+        ui->percent->setText(tr("loading"));
+        ui->BlocksLeft->setText(tr("loading"));
+    }
+    return 0;
+}
+
+
+bool InfoWidget::getuserRequest()
+{
+    return m_userRequested;
+
+}
+void InfoWidget::setuserRequest(bool userRequested)
+{
+    m_userRequested = userRequested;
+
+}
+void InfoWidget::showHide(bool hide)//,bool userRequested)
+{
+
+    if(!hide)
+    {
+        setVisible(true);
+    }
+    else
+    {
+        setVisible(false);
+    }
+
+}
+
+QString InfoWidget:: getVersion()
+{
+    QString url;
+    if(Intro::m_clienttype == "test")
+    {
+        url = "http://exploertest.ipchainglobal.com:4000/getInfo";
+    }else
+    {
+        url = "http://exploer.ipchainglobal.com:4000/getInfo";
+    }
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+    QNetworkReply *reply = manager->get(QNetworkRequest(QUrl(url)));
+    QByteArray responseData;
+    QEventLoop eventLoop;
+    connect(manager, SIGNAL(finished(QNetworkReply*)), &eventLoop, SLOT(quit()));
+    eventLoop.exec();
+    responseData = reply->readAll();
+    delete manager;
+    QString jsonstr =  QString(responseData);
+    std::string stdstrjson = jsonstr.toStdString();
+    LOG_WRITE(LOG_INFO,"getVersion ",stdstrjson.c_str());
+    cJSON*root=cJSON_Parse(stdstrjson.c_str());
+    if(root){
+        cJSON*itemversion=cJSON_GetObjectItem(root,"version");
+        if(itemversion){
+
+            cJSON*itemurl =cJSON_GetObjectItem(root,"url");
+            if(itemurl && QString::compare(QString(itemversion->valuestring),version)>0){
+
+                Q_EMIT(updateclient(cJSONGetStringObjectItem(root,"type"),\
+                                    cJSONGetStringObjectItem(root,"sugtext"),\
+                                    cJSONGetStringObjectItem(root,"url")));
+                return QString::fromStdString(itemurl->valuestring);
+            }
+        }
+    }
+    return QString("");
+}
+QString InfoWidget::cJSONGetStringObjectItem(const cJSON* object,QString name)
+{
+    cJSON*item =cJSON_GetObjectItem(object,name.toStdString().c_str());
+    std::string text;
+    if(item&&item->valuestring)
+        text = item->valuestring;
+    return QString::fromStdString(text);
+}
+
+void InfoWidget::openUrlVersion()
+{
+    bool back =QDesktopServices::openUrl(QUrl(m_versionhtml));
+    if(back)
+    {
+        LOG_WRITE(LOG_INFO,"openUrl true",m_versionhtml.toStdString().c_str());
+    }else{
+        LOG_WRITE(LOG_INFO,"openUrl false ",m_versionhtml.toStdString().c_str());
+    }
+}
+void InfoWidget::updateclientSlot(QString type,QString sugtext,QString url)
+{
+    LOG_WRITE(LOG_INFO,"InfoWidget::updateclientSlot ",\
+              type.toStdString().c_str(),sugtext.toStdString().c_str(),\
+              url.toStdString().c_str());
+    UpdateDialog updatedlg;
+    updatedlg.setWindowFlags(Qt::CustomizeWindowHint | Qt::WindowMaximizeButtonHint);
+    updatedlg.setinfo(type,sugtext,url);
+    updatedlg.exec();
+}
