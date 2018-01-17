@@ -20,7 +20,7 @@ These are some resources that might be helpful in understanding IPChain.
 Basic usage resources:
 
 * [IPChain Usage Guide](https://github.com/IPCChain/ipchain/wiki/IPChain-Usage-Guide)
-* [IPChain digging tutorial](http://github.com/IPCChain/ipchain/wiki/IPChain-Digging-Manual)
+* [IPChain digging Manual](http://github.com/IPCChain/ipchain/wiki/IPChain-Digging-Manual)
 * [IPChain block exploer](http://exploer.ipchainglobal.com)
 
 Development resources:
