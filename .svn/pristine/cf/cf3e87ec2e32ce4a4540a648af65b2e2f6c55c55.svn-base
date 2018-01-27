@@ -3086,7 +3086,6 @@ bool CWallet::SelectNormalCoins(const vector<COutput>& vAvailableCoins, const CA
 		else
 			++it;
 	}
-
 	size_t nMaxChainLength = std::min(GetArg("-limitancestorcount", DEFAULT_ANCESTOR_LIMIT), GetArg("-limitdescendantcount", DEFAULT_DESCENDANT_LIMIT));
 	bool fRejectLongChains = GetBoolArg("-walletrejectlongchains", DEFAULT_WALLET_REJECT_LONG_CHAINS);
 
@@ -5377,6 +5376,7 @@ bool CWallet::CreateIPCRegTransaction(std::string& strReglabel, const vector<CRe
 					CTxOut txout(recipient.nAmount, recipient.scriptPubKey, TXOUT_IPCOWNER, label, TxLabel); 
 
 					txNew.vout.push_back(txout);
+					break;
 				}
 
 				// Choose coins to use

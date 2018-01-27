@@ -2016,7 +2016,6 @@ UniValue sendtokenmany(const JSONRPCRequest& request)
 		throw JSONRPCError(RPC_INVALID_PARAMETER, "Error: Can't found 'accuracy' of the Token");
 
 	int tokenaccuracy = tokenDataMap[tokensymbol].accuracy;
-	std::cout << "tokenaccuracy =  " << tokenaccuracy  << std::endl;
 	UniValue sendTo = request.params[2].get_obj();
 	
 	CWalletTx wtx;
@@ -2057,7 +2056,6 @@ UniValue sendtokenmany(const JSONRPCRequest& request)
 	pwalletMain->GetSymbolbalance(tokensymbol, nBalance);
 	if (totalAmount > nBalance)
 		throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
-	std::cout << "totalAmount =" << totalAmount << std::endl;
 	
 	// Send
 	CReserveKey keyChange(pwalletMain);
@@ -2065,7 +2063,6 @@ UniValue sendtokenmany(const JSONRPCRequest& request)
 	int nChangePosRet = -1;
 	string strFailReason;
 	bool fCreated = pwalletMain->CreateTokenTransactionM(tokensymbol,vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason);
-	std::cout << "33333333 " << std::endl;
 	if (!fCreated)
 		throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, strFailReason);
 	CValidationState state;
