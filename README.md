@@ -69,6 +69,47 @@ IPChain Core currently implements the following:
     make   
     make install 
 
+## Build on CentOS7.3
+
+		yum install make
+		yum install gcc
+		yum install gcc-c++
+		yum install zlib-devel
+		yum install openssl-devel
+		yum groupinstall "Development Tools"
+		
+		Download&Install miniupnpc library		
+		wget -O miniupnpc-1.6.20120509.tar.gz http://miniupnp.free.fr/files/download.php?file=miniupnpc-1.6.20120509.tar.gz
+		tar -zxvf miniupnpc-1.6.20120509.tar.gz
+		cd miniupnpc-1.6.20120509
+		make install 
+
+		Download&Install Boost library
+		wget https://jaist.dl.sourceforge.net/project/boost/boost/1.59.0/boost_1_59_0.tar.gz
+		tar zxvf boost_1_59_0.tar.gz 
+		cd  boost_1_59_0
+		./bootstrap.sh
+		./b2
+		./b2 install
+		
+		Add boost.conf file in the /etc/ld.so.conf.d/ directory 
+		cd /etc/ld.so.conf.d/
+		vi boost.conf
+		
+		Add following content in boost.conf
+		/usr/local/lib/ 
+
+		ldconfig 
+		yum install libevent-devel
+		yum install protobuf-devel
+		yum install protobuf-compiler
+
+		git clone https://github.com/IPCChain/ipchain.git
+		cd ipchain
+		./autogen.sh
+		./configure --with-incompatible-bdb 
+		make
+
 ## Build on OSX
 The commands in this guide should be executed in a Terminal application. The built-in one is located in `/Applications/Utilities/Terminal.app`
 ### Preparation
@@ -101,9 +142,6 @@ NOTE: Building with Qt4 is still supported, however, could result in a broken UI
 
         make check
 ## Run
-### Run in mainnet
 Then you can either run the command-line daemon using `src/ipchain` and `ipchain-cli`, or you can run the Qt GUI using `src/qt/ipchain-qt`
-### Run in testnet
-Then you can either run the command-line daemon using `src/ipchain -testnet` and `ipchain-cli`, or you can run the Qt GUI using `src/qt/ipchain-qt -testnet`
 # License
 IPChain is GPLv3 licensed.
