@@ -107,14 +107,20 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
 				switch ((int64_t)prev.txType)
 				{
 					case 4:
-						in.push_back(Pair("tokensymbol", prev.tokenRegLabel.getTokenSymbol()));
-						in.push_back(Pair("tokenvalue", ValueFromTCoins(prev.tokenRegLabel.totalCount, (int)tokenDataMap[prev.tokenRegLabel.getTokenSymbol()].accuracy)));
-						in.push_back(Pair("accuracy", prev.tokenRegLabel.accuracy));
+						{
+							  in.push_back(Pair("tokensymbol", prev.tokenRegLabel.getTokenSymbol()));
+							  std::string strvalue = std::to_string(ValueFromTCoins(prev.tokenRegLabel.totalCount, (int)tokenDataMap[prev.tokenRegLabel.getTokenSymbol()].accuracy).get_int64());
+							  in.push_back(Pair("tokenvalue", strvalue));
+							  in.push_back(Pair("accuracy", prev.tokenRegLabel.accuracy));
+						}
 						break;
 					case 5:
-						in.push_back(Pair("tokensymbol", prev.tokenLabel.getTokenSymbol()));
-						in.push_back(Pair("tokenvalue", ValueFromTCoins(prev.tokenLabel.value, (int)tokenDataMap[prev.tokenLabel.getTokenSymbol()].accuracy)));
-						in.push_back(Pair("accuracy", prev.tokenLabel.accuracy));
+						{
+							  in.push_back(Pair("tokensymbol", prev.tokenLabel.getTokenSymbol()));
+							  std::string strvalue = std::to_string(ValueFromTCoins(prev.tokenLabel.value, (int)tokenDataMap[prev.tokenLabel.getTokenSymbol()].accuracy).get_int64());
+							  in.push_back(Pair("tokenvalue", strvalue));
+							  in.push_back(Pair("accuracy", prev.tokenLabel.accuracy));	 
+						}
 						break;
 					default:
 						break;
@@ -157,23 +163,31 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
 			break;
 
 		case 4:
-			out.push_back(Pair("TokenSymbol", txout.tokenRegLabel.getTokenSymbol()));
-			out.push_back(Pair("TokenValue", txout.tokenRegLabel.value));
-			out.push_back(Pair("TokenHash", txout.tokenRegLabel.hash.GetHex()));
-			out.push_back(Pair("TokenLabel", txout.tokenRegLabel.getTokenLabel()));
-			out.push_back(Pair("TokenIssue", txout.tokenRegLabel.issueDate));
-			out.push_back(Pair("TokenTotalCount", ValueFromTCoins(txout.tokenRegLabel.totalCount, (int)tokenDataMap[txout.tokenRegLabel.getTokenSymbol()].accuracy)));
-			out.push_back(Pair("accuracy", txout.tokenRegLabel.accuracy));
-			out.push_back(Pair("txLabelLen", txout.txLabelLen));
-			out.push_back(Pair("txLabel", txout.txLabel));
+			{
+				  out.push_back(Pair("TokenSymbol", txout.tokenRegLabel.getTokenSymbol()));
+				  out.push_back(Pair("TokenValue", txout.tokenRegLabel.value));
+				  out.push_back(Pair("TokenHash", txout.tokenRegLabel.hash.GetHex()));
+				  out.push_back(Pair("TokenLabel", txout.tokenRegLabel.getTokenLabel()));
+				  out.push_back(Pair("TokenIssue", txout.tokenRegLabel.issueDate));
+				  std::string strvalue = std::to_string(ValueFromTCoins(txout.tokenRegLabel.totalCount, (int)tokenDataMap[txout.tokenRegLabel.getTokenSymbol()].accuracy).get_int64());
+				  out.push_back(Pair("TokenTotalCount", strvalue));
+				  out.push_back(Pair("accuracy", txout.tokenRegLabel.accuracy));
+				  out.push_back(Pair("txLabelLen", txout.txLabelLen));
+				  out.push_back(Pair("txLabel", txout.txLabel));
+			}
+			
 			break;
 
 		case 5:
-			out.push_back(Pair("TokenSymbol", txout.tokenLabel.getTokenSymbol()));
-			out.push_back(Pair("TokenValue", ValueFromTCoins(txout.tokenLabel.value, (int)tokenDataMap[txout.tokenLabel.getTokenSymbol()].accuracy)));
-			out.push_back(Pair("accuracy", txout.tokenLabel.accuracy));
-			out.push_back(Pair("txLabelLen", txout.txLabelLen));
-			out.push_back(Pair("txLabel", txout.txLabel));
+			{
+				  out.push_back(Pair("TokenSymbol", txout.tokenLabel.getTokenSymbol()));
+				  std::string strvalue =std:: to_string(ValueFromTCoins(txout.tokenLabel.value, (int)tokenDataMap[txout.tokenLabel.getTokenSymbol()].accuracy).get_int64());
+				  out.push_back(Pair("TokenValue", strvalue));
+				  out.push_back(Pair("accuracy", txout.tokenLabel.accuracy));
+				  out.push_back(Pair("txLabelLen", txout.txLabelLen));
+				  out.push_back(Pair("txLabel", txout.txLabel));
+			}
+			
 			break;
 
 		case 2:
@@ -1386,7 +1400,7 @@ static const CRPCCommand commands[] =
     { "rawtransactions",    "base58decodetohexstring",  &base58decodetohexstring,  true,  {"hexstring"} },
     { "rawtransactions",    "base58encodefromhexstring", &base58encodefromhexstring,  true,  {"hexstring"} },
     { "rawtransactions",    "gensystemaddress",			&gensystemaddress,  true,  {"hexstring"} },
-	{ "rawtransactions",    "gensystemprivkey",			&gensystemprivkey,  true,{ "hexstring" } },
+	{ "rawtransactions",    "gensystemprivkey",			&gensystemprivkey,  true,  { "hexstring" } },
 };
 
 void RegisterRawTransactionRPCCommands(CRPCTable &t)
