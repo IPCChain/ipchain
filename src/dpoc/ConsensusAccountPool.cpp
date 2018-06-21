@@ -1344,9 +1344,9 @@ bool CConsensusAccountPool::pushDPOCBlock(const std::shared_ptr<const CBlock> pb
 			tmpcachedTimeoutToPunish.clear();
 			verifysuccessed = false;
 
-			SnapshotClass lastSnapshot;
-			if (GetLastSnapshot(lastSnapshot))
-			{
+            //SnapshotClass lastSnapshot;
+            //if (GetLastSnapshot(lastSnapshot))
+            {
 				tmpcachedIndexsToRefund = lastSnapshot.cachedIndexsToRefund;
 				tmpcachedTimeoutToPunish = lastSnapshot.cachedTimeoutPunishToRun;
 
