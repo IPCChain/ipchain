@@ -51,7 +51,7 @@ IPChain Core currently implements the following:
     apt-get install libminiupnpc-dev
     apt-get install autoconf
 
-    sudo apt-get install libbd5.3++-dev
+    sudo apt-get install libdb5.3++-dev
     sudo apt-get install qt4-dev-tools qt4-doc qt4-qtconfig qt4-demos qt4-designer
     sudo apt-get install libboost-all-dev
     sudo apt-get gcc-multilib
