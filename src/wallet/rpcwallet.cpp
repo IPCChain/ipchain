@@ -697,28 +697,37 @@ UniValue unionsendtokenmany(const JSONRPCRequest& request)
         );
     if (!EnsureWalletIsAvailable(request.fHelp))
         return NullUniValue;
-
+    //LogPrintf("unionsendtokenmany\n");
+    std::cout<<"unionsendtokenmany"<<std::endl;
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     if (pwalletMain->GetBroadcastTransactions() && !g_connman)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
     string strAddress = request.params[0].get_str();
+    //LogPrintf("strAddress:%s\n",strAddress);
+    std::cout<<"strAddress:"<<strAddress<<std::endl;
     CBitcoinAddress address(strAddress);
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid ipc address");
 
     string tokensymbol = request.params[1].get_str();
+    //LogPrintf("tokensymbol:%s\n",tokensymbol);
+    std::cout<<"tokensymbol:"<<tokensymbol<<std::endl;
     if (tokenDataMap.count(tokensymbol) == 0)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Error: Can't found 'tokensymbol' of the Token");
 
     int tokenaccuracy = tokenDataMap[tokensymbol].accuracy;
+    //LogPrintf("  tokenaccuracy:%d\n",tokenaccuracy);
+    std::cout<<"  tokenaccuracy:"<<tokenaccuracy<<std::endl;
     if(tokenaccuracy<0||tokenaccuracy>10)
     {
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Error: Can't found 'tokenaccuracy' of the Token");
 
     }
     UniValue sendTo = request.params[2].get_array();
+    //LogPrintf("sendTo:%s\n",sendTo.write());
+    std::cout<<"sendTo:"<<sendTo.write()<<std::endl;
     struct addressinfo{
         int64_t amount;
         std::string crosstxids;
@@ -729,6 +738,7 @@ UniValue unionsendtokenmany(const JSONRPCRequest& request)
     for (unsigned int idx = 0; idx < sendTo.size(); idx++) {
         UniValue pos = sendTo[idx].get_obj();
         if(pos.exists("address") == 0){
+            LogPrintf("unionsendtokenmany address error:%s   index%d\n ",sendTo.write(), idx);
             throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid parameter, duplicated position: amounts %d address", idx));
         }
         if(pos.exists("amount") == 0){
@@ -739,6 +749,7 @@ UniValue unionsendtokenmany(const JSONRPCRequest& request)
         }
         string strposaddress = find_value(pos, "address").get_str();
         if(strposaddress.size()>36){
+            LogPrintf("unionsendtokenmany address error:%s   index%d\n ",sendTo.write(), idx);
             throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid parameter, duplicated position: amounts %d address", idx));
         }
         int64_t nAmount = TCoinsFromValue(find_value(pos, "amount"), tokenaccuracy);
@@ -766,12 +777,16 @@ UniValue unionsendtokenmany(const JSONRPCRequest& request)
 
     }
     bool bNeedSign = true;
-    if (request.params.size() > 3)
+    if (request.params.size() > 3){
         bNeedSign = request.params[3].get_bool();
-
+        //LogPrintf("bNeedSign:%d\n",bNeedSign);
+        std::cout<<"bNeedSign:"<<bNeedSign<<std::endl;
+    }
     int maxvinsize = 0;
     if (request.params.size() > 4){
         int maxvinsizetemp = request.params[4].get_int64();
+        //LogPrintf("maxvinsizetemp:%d\n",maxvinsizetemp);
+        std::cout<<"maxvinsizetemp:"<<maxvinsizetemp<<std::endl;
         if(maxvinsizetemp > 0)
             maxvinsize = maxvinsizetemp;
     }
@@ -779,6 +794,8 @@ UniValue unionsendtokenmany(const JSONRPCRequest& request)
     int minvinsize = 0;
     if (request.params.size() > 5){
         int minvinsizetemp = request.params[5].get_int64();
+        //LogPrintf("minvinsizetemp:%d\n",minvinsizetemp);
+        std::cout<<"minvinsizetemp:"<<minvinsizetemp<<std::endl;
         if(minvinsizetemp > 0)
             minvinsize = minvinsizetemp;
     }
@@ -786,6 +803,8 @@ UniValue unionsendtokenmany(const JSONRPCRequest& request)
     int minconfirmation = 8;
     if (request.params.size() > 6){
         int minconfirmationtemp = request.params[6].get_int64();
+        //LogPrintf("minconfirmationtemp:%d\n",minconfirmationtemp);
+        std::cout<<"minconfirmationtemp:"<<minconfirmationtemp<<std::endl;
         if(minconfirmationtemp > 8)
             minconfirmation = minconfirmationtemp;
     }
@@ -821,9 +840,13 @@ UniValue unionsendtokenmany(const JSONRPCRequest& request)
     // Check funds
     uint64_t nBalance = 0;
     pwalletMain->GetSymbolbalance(tokensymbol, nBalance,strAddress);
-    LogPrintf("unionsendtokenmany tokensymbol:%s nBalance:%d totalAmount:%d\n ",tokensymbol,nBalance,totalAmount);
-    if (totalAmount > nBalance)
+    std::cout<<"unionsendtokenmany tokensymbol:"<<tokensymbol \
+            <<" nBalance:"<<nBalance
+            <<" totalAmount:"<<totalAmount<<std::endl;
+    if (totalAmount > nBalance){
+        LogPrintf("unionsendtokenmany tokensymbol:%s nBalance:%d totalAmount:%d\n ",tokensymbol,nBalance,totalAmount);
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
+    }
     // Send
     CReserveKey keyChange(pwalletMain);
     CAmount nFeeRequired = 0;
@@ -3381,7 +3404,7 @@ UniValue addmultiadd(const JSONRPCRequest& request)
 	{
         string msg = "addmultiadd nrequired strhex ( \"account\" )\n"
 			"\nAdd a nrequired-to-sign multisignature address to the wallet.\n"
-			"Each key is a Bitcoin address or hex-encoded public key.\n"
+            "Each key is a ipchain address or hex-encoded public key.\n"
 			"If 'account' is specified (DEPRECATED), assign address to that account.\n"
 
 			"\nArguments:\n"
@@ -7384,6 +7407,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "getuniontxvininfo",            &getuniontxvininfo,             true,   { "strtx"} },
     //**********end
 */
+
 
 };
 

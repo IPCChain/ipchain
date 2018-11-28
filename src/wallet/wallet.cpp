@@ -12275,8 +12275,8 @@ bool CWallet::CreateMultiAddress(unsigned int nRequired, const std::vector<std::
 		}
 		else
 		{
-			strFailReason = _("Pubkey is valid!");
-            LogPrintf("CreateMultiAddress Pubkey is valid!\n");
+            strFailReason = _("Pubkey is not valid!");
+            LogPrintf("CreateMultiAddress Pubkey is not valid!\n");
 			return false;
 		}
 	}
@@ -13358,6 +13358,7 @@ bool CWallet::GetAddressNmembers(std::string address,int &nmembers,int &nRequire
 bool CWallet::getUnionTxVinInfo(std::string& strtx,std::string& strError,std::string& info)
 {
     CMutableTransaction mergedTx;
+    LogPrintf("getUnionTxVinInfo strtx  %s\n",strtx);
     if (!DecodeHexTx(mergedTx, strtx))
     {
         LogPrintf("getUnionTxVinInfo DecodeHexTx  failed\n");
@@ -13388,12 +13389,28 @@ bool CWallet::getUnionTxVinInfo(std::string& strtx,std::string& strError,std::st
             LogPrintf("getUnionTxVinInfo vin i=%d\n",i);
             CTxIn& txin = mergedTx.vin[i];
             const CCoins* coins = view.AccessCoins(txin.prevout.hash);
-            if(!coins)continue;
+            LogPrintf("gtxin.prevout.hash %s\n",txin.prevout.hash.ToString());
+            if(!coins){
+
+                   strError = _("view.AccessCoins  failed");
+                   return false;
+            }
             std::string txid = txin.prevout.hash.ToString();
+            if(txin.prevout.n>=coins->vout.size()){
+                LogPrintf("txin.prevout.n size: %d coins->vout.size() %d\n",txin.prevout.n,coins->vout.size());
+                strError = _("txin.prevout.n>=coins->vout.size  failed");
+                return false;
+            }
+            if(!coins->IsAvailable(txin.prevout.n)){
+                LogPrintf("coins->IsAvailable(txin.prevout.n) %d\n",txin.prevout.n);
+                strError = _("coins->IsAvailable  failed");
+                return false;
+            }
             const CAmount& amount = coins->vout[txin.prevout.n].nValue;
             const CScript& scriptPubKey = coins->vout[txin.prevout.n].scriptPubKey;
 
             UniValue entry(UniValue::VOBJ);
+            if(!scriptPubKey.empty())
             entry.push_back(Pair("scriptPubKey", HexStr(scriptPubKey.begin(), scriptPubKey.end())));
             entry.push_back(Pair("amount", ValueFromAmount(coins->vout[txin.prevout.n].nValue)));
             entry.push_back(Pair("txid", txid));
