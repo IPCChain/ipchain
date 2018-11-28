@@ -734,28 +734,12 @@ CAmount Getfeebytxid(const CTransaction tx)
 void UpdateIPCUniqueMap()
 {
 	std::map<std::string, std::pair<uint256, int>>::iterator tokenSymbolIteator;
-	std::map<uint128, std::pair<uint256, int>>::iterator tokenHashIteator;
-	std::map<uint128, std::pair<uint256, int>>::iterator ipcHashIteator;
-
 	tokenSymbolIteator = tmpIPCUniqueCheckMap.TokenSymbolMap.begin();
 	while (tokenSymbolIteator != tmpIPCUniqueCheckMap.TokenSymbolMap.end())
 	{
 		pIPCCheckMaps->TokenSymbolMap.insert(std::make_pair(tokenSymbolIteator->first, tokenSymbolIteator->second));
 		tokenSymbolIteator++;
 	}
-
-	tokenHashIteator = tmpIPCUniqueCheckMap.TokenHashMap.begin();
-	while (tokenHashIteator != tmpIPCUniqueCheckMap.TokenHashMap.end())
-	{
-		tokenHashIteator++;
-	}
-
-	ipcHashIteator = tmpIPCUniqueCheckMap.IPCHashMap.begin();
-	while (ipcHashIteator != tmpIPCUniqueCheckMap.IPCHashMap.end())
-	{
-		ipcHashIteator++;
-	}
-
 }
 
 enum FlushStateMode {
