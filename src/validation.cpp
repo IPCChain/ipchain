@@ -4030,13 +4030,10 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
     if (fCheckPOW && fCheckMerkleRoot)
         block.fChecked = true;
 
-	//When a block is completed, the IPC Unique value saved in the inspection process should be placed in the maintenance pool
-	UpdateIPCUniqueMap();
-	
 	int nHeight = -1;
 	{
 		LOCK(cs_main);
-		nHeight = chainActive.Height();	
+		nHeight = chainActive.Height();
 	}
 
 	if ((nHeight + 1) >= Params().CHECK_START_BLOCKCOUNT)
@@ -4047,22 +4044,26 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
 			return state.DoS(100, false, REJECT_INVALID, "bad-sign-faile", false, "block sign is bad");
 		}
 
-        /*uint256 u256blockhashchain;
+		/*uint256 u256blockhashchain;
 		//Verify the signature of the block
 		{
-			LOCK(cs_main);
-			u256blockhashchain = chainActive.Tip()->GetBlockHash();
+		LOCK(cs_main);
+		u256blockhashchain = chainActive.Tip()->GetBlockHash();
 		}
 		//Defensive attack
 		if (block.hashPrevBlock == u256blockhashchain)
 		{
-			if (!CConsensusAccountPool::Instance().checkPackagerInCurrentList(block))
-			{
-				LogPrintf("[CheckBlock] end false checkPackagerInCurrentList return false\n");
-				return  state.DoS(0, false, REJECT_INVALID, "bad-getList-faile", false, "cannot find consensusList");
-			}
-        }*/
+		if (!CConsensusAccountPool::Instance().checkPackagerInCurrentList(block))
+		{
+		LogPrintf("[CheckBlock] end false checkPackagerInCurrentList return false\n");
+		return  state.DoS(0, false, REJECT_INVALID, "bad-getList-faile", false, "cannot find consensusList");
+		}
+		}*/
 	}
+	//When a block is completed, the IPC Unique value saved in the inspection process should be placed in the maintenance pool
+	UpdateIPCUniqueMap();
+	
+	
 		
     return true;
 }
