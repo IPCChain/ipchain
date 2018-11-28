@@ -1044,7 +1044,7 @@ UniValue createrawtransaction(const JSONRPCRequest& request)
 	rawTx.vout.push_back(newout);
 
 	if (!(pwalletMain->DummySignTx(rawTx, setCoins))) {
-		throw JSONRPCError(RPC_INVALID_PARAMETER, "DummySignTx erro!");
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "DummySignTx error!");
 	}
 	unsigned int nBytes = GetVirtualTransactionSize(rawTx);
 	CAmount fee = pwalletMain->GetMinimumFee(nBytes, 8, mempool);
