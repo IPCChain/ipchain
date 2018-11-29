@@ -155,6 +155,120 @@ UniValue importprivkey(const JSONRPCRequest& request)
     return NullUniValue;
 }
 
+
+UniValue importprivkeybibipay(const JSONRPCRequest& request)
+{
+    if (!EnsureWalletIsAvailable(request.fHelp))
+        return NullUniValue;
+
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 3)
+        throw runtime_error(
+            "importprivkeybibipay \"bibipayprivkey\" ( \"label\" ) ( rescan )\n"
+            "\nAdds a private key (as returned by dumpprivkey) to your wallet.\n"
+            "\nArguments:\n"
+            "1. \"ipchainprivkey\"   (string, required) The private key (see dumpprivkey)\n"
+            "2. \"label\"            (string, optional, default=\"\") An optional label\n"
+            "3. rescan               (boolean, optional, default=true) Rescan the wallet for transactions\n"
+            "\nNote: This call can take minutes to complete if rescan is true.\n"
+            "\nExamples:\n"
+
+            "\nImport the private key with rescan\n"
+            + HelpExampleCli("importprivkeybibipay", "\"mykey\"") +
+            "\nImport using a label and without rescan\n"
+            + HelpExampleCli("importprivkeybibipay", "\"mykey\" \"testing\" false") +
+            "\nImport using default blank label and without rescan\n"
+            + HelpExampleCli("importprivkeybibipay", "\"mykey\" \"\" false") +
+            "\nAs a JSON-RPC call\n"
+            + HelpExampleRpc("importprivkeybibipay", "\"mykey\", \"testing\", false")
+        );
+
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    EnsureWalletIsUnlocked();
+
+    string strSecret = request.params[0].get_str();
+    string strLabel = "";
+    if (request.params.size() > 1)
+        strLabel = request.params[1].get_str();
+
+    // Whether to perform rescan after import
+    bool fRescan = true;
+    if (request.params.size() > 2)
+        fRescan = request.params[2].get_bool();
+
+    if (fRescan && fPruneMode)
+        throw JSONRPCError(RPC_WALLET_ERROR, "Rescan is disabled in pruned mode");
+
+   int strSecretNet = 0;
+   if(strSecret.size()<4)
+       throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key size");
+   string firstname(strSecret.substr(0,4));
+   if(firstname=="tprv")
+       strSecretNet = 1;
+   else if(firstname=="xprv")
+       strSecretNet = 0;
+   else
+       throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key encoding");
+   if((ChainNameFromCommandLine()!="test"&&strSecretNet==1)||
+      (ChainNameFromCommandLine()!="main"&&strSecretNet==0)||
+      (ChainNameFromCommandLine()!="main"&&ChainNameFromCommandLine()!="test")){
+       throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key network");
+   }
+
+   std::vector<unsigned char> vch;
+   if (!DecodeBase58(strSecret, vch))
+       throw JSONRPCError(RPC_INVALID_PARAMS, "Error: invalid Base58 Input String");
+
+   std::vector<unsigned char> vchTemp;
+   std::vector<unsigned char> vchpriv;
+   bool decodefinish = DecodeBase58(strSecret,vchTemp);
+   if(!decodefinish||vchTemp.size()!=82)
+       throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key encoding");
+   vchpriv.assign(vchTemp.begin()+4,vchTemp.begin()+78);
+   CExtKey extkey;
+   unsigned char codevchTemp[BIP32_EXTKEY_SIZE];
+   for(int size=0;size<BIP32_EXTKEY_SIZE;size++)
+           codevchTemp[size]=vchpriv[size];
+   extkey.Decode(codevchTemp);
+   CExtKey extkey1,extkey2,extkey3,extkey4,extkey5;
+   extkey.Derive(extkey1, 0x8000002c);
+   extkey1.Derive(extkey2,0x80000000+strSecretNet);
+   extkey2.Derive(extkey3,0x80000000);
+   extkey3.Derive(extkey4,0);
+   extkey4.Derive(extkey5,0);
+   CExtPubKey extpubkey = extkey5.Neuter();
+   CKeyID keyid=extpubkey.pubkey.GetID();
+   CBitcoinAddress addresskeyid(keyid);
+   if(!addresskeyid.IsValid()){
+       throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");
+   }
+    assert(extkey5.key.VerifyPubKey(extpubkey.pubkey));
+    CKeyID vchAddress =keyid;
+    {
+        pwalletMain->MarkDirty();
+        pwalletMain->SetAddressBook(vchAddress, "", "receive");
+
+        // Don't throw error in case a key is already there
+        if (pwalletMain->HaveKey(vchAddress))
+            return NullUniValue;
+
+        pwalletMain->mapKeyMetadata[vchAddress].nCreateTime = 1;
+
+        if (!pwalletMain->AddKeyPubKey(extkey5.key,extpubkey.pubkey))
+            throw JSONRPCError(RPC_WALLET_ERROR, "Error adding key to wallet");
+
+        // whenever a key is imported, we need to scan the whole chain
+        pwalletMain->UpdateTimeFirstKey(1);
+
+        if (fRescan) {
+            pwalletMain->ScanForWalletTransactions(chainActive.Genesis(), true);
+        }
+    }
+
+    return NullUniValue;
+}
+
 void ImportAddress(const CBitcoinAddress& address, const string& strLabel);
 void ImportScript(const CScript& script, const string& strLabel, bool isRedeemScript)
 {
