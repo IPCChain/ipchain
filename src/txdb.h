@@ -9,6 +9,7 @@
 #include "coins.h"
 #include "dbwrapper.h"
 #include "chain.h"
+#include "addressindex.h"
 
 #include <map>
 #include <string>
@@ -16,6 +17,7 @@
 #include <vector>
 
 #include <boost/function.hpp>
+
 
 class CBlockIndex;
 class CCoinsViewDBCursor;
@@ -123,6 +125,10 @@ public:
     bool WriteFlag(const std::string &name, bool fValue);
     bool ReadFlag(const std::string &name, bool &fValue);
     bool LoadBlockIndexGuts(boost::function<CBlockIndex*(const uint256&)> insertBlockIndex);
+
+	bool UpdateAddressUnspentIndex(const std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue > >&vect);
+	bool ReadAddressUnspentIndex(uint160 addressHash, int type,uint8_t txType,
+		std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > &vect);
 };
 
 #endif // BITCOIN_TXDB_H
