@@ -884,6 +884,8 @@ UniValue getaddressutxos(const JSONRPCRequest&  request)
 		}
 		if (uxtotype == 0 && uxtotype == it->first.txType)
 		{
+			if (it->second.unspentout.nValue == 0)   //coinbase  txtype=1  nvalue=0
+			   continue;
 			output.push_back(Pair("address", address));
 			output.push_back(Pair("txid", it->first.txhash.GetHex()));
 			output.push_back(Pair("vout", (int)it->first.index));
