@@ -794,6 +794,7 @@ bool TxDBProcess::Select(leveldb::DB *db, char *Key, std::vector<CTxaddressData>
 	return true;
 }
 
+
 //end
 
 static leveldb::Options GetOptions(size_t nCacheSize)

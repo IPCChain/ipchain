@@ -16,9 +16,11 @@
 
 #include <leveldb/db.h>
 #include <leveldb/write_batch.h>
+#include "addressindex.h"
 
 
-static const size_t DBWRAPPER_PREALLOC_KEY_SIZE = 64;
+//static const size_t DBWRAPPER_PREALLOC_KEY_SIZE = 64;
+static const size_t DBWRAPPER_PREALLOC_KEY_SIZE = 128;
 static const size_t DBWRAPPER_PREALLOC_VALUE_SIZE = 1024;
 //add by xxy
 static const int64_t MEMORY_ALLOCATION_MAX = 257;
@@ -42,46 +44,8 @@ public:
 
 };
 
-class TxDBProcess
-{
-public:
-	struct KeyInfo{
 
-		char StartKey[MEMORY_ALLOCATION_MAX];   /* The initial key of the key sequence */
-		char EndKey[MEMORY_ALLOCATION_MAX];     /* The end key of the keyx sequence */
-		int64_t RecordSum;                        /* The total number of records in the Key sequence */
-		int64_t KeyHight;
-	};
-	
-	leveldb::Status s;
-	leveldb::DB *db;
-	leveldb::Options options;
-	std::string dbpath;
 
-	TxDBProcess();
-	~TxDBProcess();
-	bool Init();
-	bool InsertTxid(leveldb::DB *db, char *Key, char* txid);
-	bool SelectTxid(leveldb::DB *db, char *Key, std::vector<std::string> &txids, int64_t get_num, int16_t out_of_order);
-	bool DeleteTxid(leveldb::DB *db, char *Key, char *txid);
-	int64_t GetTotalNum(leveldb::DB *db, char *Key);
-	int64_t GetHeight(leveldb::DB *db, char *Key);
-	bool ReadKeyInfo(leveldb::DB *db, char *Key, KeyInfo *keyinfo);
-	bool UpdateKeyInfo(leveldb::DB *db, char *Key, KeyInfo *keyinfo);
-
-	long Select(leveldb::DB *db, char *Key, std::vector<std::string> &values, long newest_num);
-	long Select(leveldb::DB *db, char *Key, std::vector<std::string> &values, long newest_num, char *Value);
-	bool Insert(leveldb::DB *db, char *Key, char* Value);
-	int DeleteTx(leveldb::DB *db, char *Key, char* Value);
-	long GetSum(leveldb::DB *db, char *Key);
-	long GetMax(leveldb::DB *db, char *Key);
-	bool SearchKeyTxByItor(leveldb::DB *db, char *Key, char *Value);
-	bool SearchKeyTxByIndex(leveldb::DB *db, char *Key, char* KeyIndex, char *Value);
-	bool GetMaxKey(leveldb::DB *db, char *Key, char *MaxKey);
-	bool Insert(leveldb::DB *db, char *Key, std::vector<CTxaddressData> &TxInfo);
-	bool Select(leveldb::DB *db, char *Key, std::vector<CTxaddressData> &TxInfo);
-
-};
 //end
 class dbwrapper_error : public std::runtime_error
 {
@@ -349,6 +313,47 @@ public:
      * Return true if the database managed by this class contains no entries.
      */
     bool IsEmpty();
+};
+
+class TxDBProcess
+{
+public:
+	struct KeyInfo{
+
+		char StartKey[MEMORY_ALLOCATION_MAX];   /* The initial key of the key sequence */
+		char EndKey[MEMORY_ALLOCATION_MAX];     /* The end key of the keyx sequence */
+		int64_t RecordSum;                        /* The total number of records in the Key sequence */
+		int64_t KeyHight;
+	};
+
+	leveldb::Status s;
+	leveldb::DB *db;
+	leveldb::Options options;
+	std::string dbpath;
+
+	TxDBProcess();
+	~TxDBProcess();
+	bool Init();
+	bool InsertTxid(leveldb::DB *db, char *Key, char* txid);
+	bool SelectTxid(leveldb::DB *db, char *Key, std::vector<std::string> &txids, int64_t get_num, int16_t out_of_order);
+	bool DeleteTxid(leveldb::DB *db, char *Key, char *txid);
+	int64_t GetTotalNum(leveldb::DB *db, char *Key);
+	int64_t GetHeight(leveldb::DB *db, char *Key);
+	bool ReadKeyInfo(leveldb::DB *db, char *Key, KeyInfo *keyinfo);
+	bool UpdateKeyInfo(leveldb::DB *db, char *Key, KeyInfo *keyinfo);
+
+	long Select(leveldb::DB *db, char *Key, std::vector<std::string> &values, long newest_num);
+	long Select(leveldb::DB *db, char *Key, std::vector<std::string> &values, long newest_num, char *Value);
+	bool Insert(leveldb::DB *db, char *Key, char* Value);
+	int DeleteTx(leveldb::DB *db, char *Key, char* Value);
+	long GetSum(leveldb::DB *db, char *Key);
+	long GetMax(leveldb::DB *db, char *Key);
+	bool SearchKeyTxByItor(leveldb::DB *db, char *Key, char *Value);
+	bool SearchKeyTxByIndex(leveldb::DB *db, char *Key, char* KeyIndex, char *Value);
+	bool GetMaxKey(leveldb::DB *db, char *Key, char *MaxKey);
+	bool Insert(leveldb::DB *db, char *Key, std::vector<CTxaddressData> &TxInfo);
+	bool Select(leveldb::DB *db, char *Key, std::vector<CTxaddressData> &TxInfo);
+
 };
 
 #endif // BITCOIN_DBWRAPPER_H

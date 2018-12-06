@@ -200,6 +200,19 @@ uint64_t CTxOut::GetTokenvalue() const{
     return uint64_t(0);
 }
 
+uint8_t CTxOut::getTokenaccuracy() const
+{
+	if (txType == TXOUT_TOKENREG)
+	{
+		return tokenRegLabel.accuracy;
+	}
+	else if (txType == TXOUT_TOKEN)
+	{
+		return tokenLabel.accuracy;
+	}
+	return uint8_t(0);
+}
+
 
 CMutableTransaction::CMutableTransaction() : nVersion(CTransaction::CURRENT_VERSION), nLockTime(0) {}
 CMutableTransaction::CMutableTransaction(const CTransaction& tx) : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime) {}

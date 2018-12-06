@@ -199,6 +199,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "uniongettxidsfromtxrecord", 1, "minblocknum" },
     { "uniongettxidsfromtxrecord", 2, "maxblocknum" },
     { "addmultiadd", 2, "relatedtome" },
+	{ "getaddressutxos", 1, "type" },
 
 
 

@@ -536,6 +536,7 @@ public:
     }
 
     uint64_t GetTokenvalue() const;
+	uint8_t getTokenaccuracy()const;
 };
 
 struct CMutableTransaction;

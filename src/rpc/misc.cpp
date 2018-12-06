@@ -13,7 +13,8 @@
 #include "timedata.h"
 #include "util.h"
 #include "utilstrencodings.h"
-#include "validation.h"
+#include "txdb.h"
+
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
 #include "wallet/walletdb.h"
@@ -25,6 +26,7 @@
 #include <boost/assign/list_of.hpp>
 
 #include <univalue.h>
+
 
 using namespace std;
 
@@ -790,6 +792,139 @@ UniValue gettokenlabelbysymbol(const JSONRPCRequest& request)
 	return result;
 }
 
+bool getAddressFromIndex(const int &type, const uint160 &hash, std::string &address)
+{
+	if (type == 2) {
+		address = CBitcoinAddress(CScriptID(hash)).ToString();
+	}
+	else if (type == 1) {
+		address = CBitcoinAddress(CKeyID(hash)).ToString();
+	}
+	else {
+		return false;
+	}
+	return true;
+}
+bool heightSort(std::pair<CAddressUnspentKey, CAddressUnspentValue> a,
+	std::pair<CAddressUnspentKey, CAddressUnspentValue> b) {
+	return a.second.blockHeight < b.second.blockHeight;
+}
+
+UniValue getaddressutxos(const JSONRPCRequest&  request)
+{
+	if (request.fHelp || request.params.size() < 2 || request.params.size() > 3)
+		throw runtime_error(
+		"getaddressutxos\n"
+		"\nReturns all unspent outputs for an address (requires addressindex to be enabled).\n"
+		"\nArguments:\n"
+		"{\n"
+		"1.    \"address\"  (string) The base58check encoded address\n"
+		"2.    \"type\"	   (numeric)	The txType of utxo which you want to get.(0 ipc  1 token)\n"
+		"3.    \"tokensymbol\"	   (string)	The token symbol when type = 1.\n"
+		"}\n"
+		"\nResult\n"
+		"[\n"
+		"  {\n"
+		"    \"address\": \"address\",  (string) The address base58check encoded\n"
+		"    \"txid\": \"txid\",		(string) The output txid\n"
+		"    \"vout\" : n,				(number) The output index\n"
+		"    \"scriptPubKey\": \"key\",   (strin) The script hex encoded\n"
+		"    \"amount\" : \"account\",		(number) The amount  of the output\n"
+		"    \"height\" : n,				(number) The block height\n"
+		"    \"confirmations\" : n,      (numeric) The number of confirmations\n"
+		"     ......"
+		"  }\n"
+		"]\n"
+		"\nExamples:\n"
+		+ HelpExampleCli("getaddressutxos", "\"12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX\", 4")
+		+ HelpExampleRpc("getaddressutxos", "\"12c6DSiU4Rq3P4ZxziKxzrL5LmMBrzjrJX\", 4")
+		);
+
+	
+	if (!fAddressIndex)
+	{
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No support!");
+	}
+	std::string straddress = request.params[0].get_str();
+	if (straddress.length() != 36&&straddress.length() != 35)
+	{
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invailed address!");
+	}
+	CBitcoinAddress address(straddress);
+	uint160 hashBytes;
+	int type = 0;
+	if (!address.GetIndexKey(hashBytes, type)) {
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+	}
+	if (request.params[1].get_int() != 0 && request.params[1].get_int() !=1 )
+		throw JSONRPCError(RPC_INVALID_PARAMS, "Invalid type of utxo");
+	uint8_t uxtotype = (uint8_t)request.params[1].get_int();
+	std::string strtokensymbol = "";
+	if (request.params.size() > 2)
+	{
+		strtokensymbol = request.params[2].get_str();
+	}
+
+	std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > unspentOutputs;
+
+	if (!(pblocktree->ReadAddressUnspentIndex(hashBytes, type, uxtotype, unspentOutputs))) {
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
+	}
+	
+
+	std::sort(unspentOutputs.begin(), unspentOutputs.end(), heightSort);
+
+	UniValue utxos(UniValue::VARR);
+
+	for (std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> >::const_iterator it = unspentOutputs.begin(); it != unspentOutputs.end(); it++) {
+		UniValue output(UniValue::VOBJ);
+		std::string address;
+		if (!getAddressFromIndex(it->first.type, it->first.hashBytes, address)) {
+			throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
+		}
+		if (uxtotype == 0 && uxtotype == it->first.txType)
+		{
+			if (it->second.unspentout.nValue == 0)   //coinbase  txtype=1  nvalue=0
+			   continue;
+			output.push_back(Pair("address", address));
+			output.push_back(Pair("txid", it->first.txhash.GetHex()));
+			output.push_back(Pair("vout", (int)it->first.index));
+			output.push_back(Pair("scriptPubKey", HexStr(it->second.unspentout.scriptPubKey.begin(), it->second.unspentout.scriptPubKey.end())));
+			output.push_back(Pair("amount", ValueFromAmount(it->second.unspentout.nValue)));
+			output.push_back(Pair("height", it->second.blockHeight));
+			output.push_back(Pair("confirmations", chainActive.Height() - it->second.blockHeight+1));
+			utxos.push_back(output);
+		}
+		else if (uxtotype == 1 && uxtotype == it->first.txType)
+		{
+			if (request.params.size() > 2)
+			{
+				if (strtokensymbol != it->second.unspentout.getTokenSymbol())
+					continue;
+			}
+			output.push_back(Pair("address", address));
+			output.push_back(Pair("txid", it->first.txhash.GetHex()));
+			output.push_back(Pair("vout", (int)it->first.index));
+			output.push_back(Pair("scriptPubKey", HexStr(it->second.unspentout.scriptPubKey.begin(), it->second.unspentout.scriptPubKey.end())));
+			output.push_back(Pair("TokenSymbol", it->second.unspentout.getTokenSymbol()));
+			output.push_back(Pair("tokenvalue", ValueFromTCoinsN(it->second.unspentout.GetTokenvalue(), (int)it->second.unspentout.getTokenaccuracy())));
+			output.push_back(Pair("TokenAccuracy", it->second.unspentout.getTokenaccuracy()));
+			output.push_back(Pair("height", it->second.blockHeight));
+			output.push_back(Pair("confirmations", chainActive.Height() - it->second.blockHeight + 1));
+			utxos.push_back(output);
+		}
+		else if (uxtotype == 2 && uxtotype == it->first.txType)
+		{
+			//now only  support ipc and token type
+		}
+	
+	}
+
+
+	return utxos;
+
+}
+
 UniValue gettokenbalancebyaddress(const JSONRPCRequest& request)
 {
 	if (request.fHelp || request.params.size() != 2)
@@ -843,15 +978,18 @@ static const CRPCCommand commands[] =
     { "control",			"getipcversion",		  &getipcversion,		   true, {} },
     { "control",            "getmemoryinfo",          &getmemoryinfo,          true,  {} },
     { "util",               "validateaddress",        &validateaddress,        true,  {"address"} }, /* uses wallet if enabled */
+	{ "util", "verifymessage", &verifymessage, true, { "address", "signature", "message" } },
+	{ "util", "signmessagewithprivkey", &signmessagewithprivkey, true, { "privkey", "message" } },
+	//addressindex
 //    { "util",               "createmultisig",       &createmultisig,         true,  {"nrequired","keys"} },
-    { "util",               "verifymessage",          &verifymessage,          true,  {"address","signature","message"} },
-    { "util",               "signmessagewithprivkey", &signmessagewithprivkey, true,  {"privkey","message"} },
+
 	{ "util",				"getaddresstxids",		  &getaddresstxids,		   true,  { "address" "nCount" "txid" } },
 	{ "util",				"getaddressbalance",	  &getaddressbalance,		true,  { "address" } },
 	{ "util",				"gettokenbalancebyaddress", &gettokenbalancebyaddress,  true,  { "address" "tokensymbol"} },
 	{ "util",				"getipchashtxids",		  &getipchashtxids,			true,  { "ipchash" } },
 	{ "util",				"gettokensymboltxids",	  &gettokensymboltxids,		true,  { "tokensymbol" "nCount" "txid"} },
 	{ "util",				"gettokenlabelbysymbol",  &gettokenlabelbysymbol,	true, { "tokensymbol" } },
+	{ "util", "getaddressutxos", &getaddressutxos, false, {"address" "type"} },
     /* Not shown in help */
 //    { "hidden",             "setmocktime",            &setmocktime,            true,  {"timestamp"}},
     { "hidden",             "echo",                   &echo,                   true,	{"arg0","arg1","arg2","arg3","arg4","arg5","arg6","arg7","arg8","arg9"}},

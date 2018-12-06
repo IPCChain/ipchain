@@ -608,27 +608,27 @@ UniValue getdpoclist(const JSONRPCRequest& request)
 		obj.push_back(Pair("publickeyhash", acount->getPubicKey160hash().GetHex()));
 		obj.push_back(Pair("credit", acount->getCredit()));
 
-		CKeyID publickeyID(acount->getPubicKey160hash());
-		CPubKey vchPubKeyOut;
-
-		if (pwalletMain->GetPubKey(publickeyID, vchPubKeyOut))
-		{
-			std::cout << "public keyhash=" << vchPubKeyOut.GetHash().ToString() <<std::endl ;
-		}
-		else {
-			std::cout << "Not public key=" << std::endl;
-		} 
-
-			
-		CKey vchPrivKeyOut;
-		if (pwalletMain->GetKey(publickeyID, vchPrivKeyOut))
-		{
-			std::cout << "....vchPrivKeyOut .......... find ...." << std::endl;
-		}
-		else {
-			std::cout << "Not vchPrivKeyOut key=" << std::endl;
-			continue;
-		}
+// 		CKeyID publickeyID(acount->getPubicKey160hash());
+// 		CPubKey vchPubKeyOut;
+// 
+// 		if (pwalletMain->GetPubKey(publickeyID, vchPubKeyOut))
+// 		{
+// 			std::cout << "public keyhash=" << vchPubKeyOut.GetHash().ToString() <<std::endl ;
+// 		}
+// 		else {
+// 			std::cout << "Not public key=" << std::endl;
+// 		} 
+// 
+// 			
+// 		CKey vchPrivKeyOut;
+// 		if (pwalletMain->GetKey(publickeyID, vchPrivKeyOut))
+// 		{
+// 			std::cout << "....vchPrivKeyOut .......... find ...." << std::endl;
+// 		}
+// 		else {
+// 			std::cout << "Not vchPrivKeyOut key=" << std::endl;
+// 			continue;
+// 		}
 
 // 		std::string str = "Bitcoin key verification\n";
 // 		//GetRandBytes(rnd, sizeof(rnd));

@@ -2611,9 +2611,11 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 	//Before the transaction detection starts, the cache list needs to be cleared
 	cachedChainTx.clear();
 
+	std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > addressUnspentIndex;
     for (unsigned int i = 0; i < block.vtx.size(); i++)
     {
 		const CTransaction &tx = *(block.vtx[i]);
+		const uint256 txhash = tx.GetHash();
 
         nInputs += tx.vin.size();
 
@@ -2624,7 +2626,48 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 return state.DoS(100, error("ConnectBlock(): inputs missing/spent"),
                                  REJECT_INVALID, "bad-txns-inputs-missingorspent");
 			}
+			if (fAddressIndex )
+			{
+				for (size_t j = 0; j < tx.vin.size(); j++) {
 
+					const CTxIn input = tx.vin[j];
+					const CTxOut &prevout = view.GetOutputFor(tx.vin[j]);
+					uint160 hashBytes;
+					int addressType;
+					uint8_t  utxotype = 0;
+					if (prevout.txType == TXOUT_NORMAL || prevout.txType == TXOUT_CAMPAIGN)
+					{
+						utxotype = 0;
+					}
+					else if (prevout.txType == TXOUT_TOKENREG || prevout.txType == TXOUT_TOKEN)
+					{
+						utxotype = 1;
+					}
+					else if (prevout.txType == TXOUT_IPCOWNER || prevout.txType == TXOUT_IPCAUTHORIZATION)
+					{
+						utxotype = 2;
+					}
+					if (prevout.scriptPubKey.IsPayToScriptHash()) {
+						hashBytes = uint160(std::vector <unsigned char>(prevout.scriptPubKey.begin() + 2, prevout.scriptPubKey.begin() + 22));
+						addressType = 2;
+					}
+					else if (prevout.scriptPubKey.IsPayToPublicKeyHash()) {
+						hashBytes = uint160(std::vector <unsigned char>(prevout.scriptPubKey.begin() + 3, prevout.scriptPubKey.begin() + 23));
+						addressType = 1;
+					}
+					else {
+						hashBytes.SetNull();
+						addressType = 0;
+					}
+
+					if (fAddressIndex && addressType > 0) {
+
+						// remove address from unspent index
+						addressUnspentIndex.push_back(std::make_pair(CAddressUnspentKey(addressType, hashBytes, utxotype, input.prevout.hash, input.prevout.n), CAddressUnspentValue()));
+					}
+				}
+
+			}
         }
 
         // GetTransactionSigOpCost counts 3 types of sigops:
@@ -2652,6 +2695,43 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 			}
             control.Add(vChecks);
         }
+		if (fAddressIndex) {
+			for (unsigned int k = 0; k < tx.vout.size(); k++) {
+				const CTxOut &out = tx.vout[k];
+				uint8_t  utxotype = 0;
+				if (out.txType == TXOUT_NORMAL || out.txType == TXOUT_CAMPAIGN)
+				{
+					utxotype = 0;
+				}
+				else if (out.txType == TXOUT_TOKENREG || out.txType == TXOUT_TOKEN)
+				{
+					utxotype = 1;
+				}
+				else if (out.txType == TXOUT_IPCOWNER || out.txType == TXOUT_IPCAUTHORIZATION)
+				{
+					utxotype = 2;
+				}
+				
+				if (out.scriptPubKey.IsPayToScriptHash()) {
+					std::vector<unsigned char> hashBytes(out.scriptPubKey.begin() + 2, out.scriptPubKey.begin() + 22);
+
+					// record unspent output
+					addressUnspentIndex.push_back(std::make_pair(CAddressUnspentKey(2, uint160(hashBytes), utxotype, txhash, k), CAddressUnspentValue(pindex->nHeight, out)));
+
+				}
+				else if (out.scriptPubKey.IsPayToPublicKeyHash()) {
+					std::vector<unsigned char> hashBytes(out.scriptPubKey.begin() + 3, out.scriptPubKey.begin() + 23);
+
+					// record unspent output
+					addressUnspentIndex.push_back(std::make_pair(CAddressUnspentKey(1, uint160(hashBytes), utxotype, txhash, k), CAddressUnspentValue(pindex->nHeight, out)));
+
+				}
+				else {
+					continue;
+				}
+
+			}
+		}
 
 		// check IPC validations
 		if (!AreIPCStandard(tx, state))
@@ -2720,6 +2800,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         if (!pblocktree->WriteTxIndex(vPos))
             return AbortNode(state, "Failed to write transaction index");
 
+	if (fAddressIndex) {
+	
+		if (!pblocktree->UpdateAddressUnspentIndex(addressUnspentIndex)) {
+			return AbortNode(state, "Failed to write address unspent index");
+		}
+	}
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
 
@@ -4305,6 +4391,7 @@ static bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state
 // Exposed wrapper for AcceptBlockHeader
 bool ProcessNewBlockHeaders(const std::vector<CBlockHeader>& headers, CValidationState& state, const CChainParams& chainparams, const CBlockIndex** ppindex)
 {
+	LogPrintf("[ProcessNewBlockHeaders] headers  ,Beign .\n");
     {
         LOCK(cs_main);
         for (const CBlockHeader& header : headers) {
@@ -4316,9 +4403,12 @@ bool ProcessNewBlockHeaders(const std::vector<CBlockHeader>& headers, CValidatio
             if (ppindex) {
                 *ppindex = pindex;
             }
+			if (pindex)
+				LogPrintf("[ProcessNewBlockHeaders]  height= %d .\n",pindex->nHeight);
         }
     }
     NotifyHeaderTip();
+	LogPrintf("[ProcessNewBlockHeaders] headers height ,End .\n");
     return true;
 }
 
@@ -4720,6 +4810,10 @@ bool static LoadBlockIndexDB(const CChainParams& chainparams)
 					pindex->nChainTx(pindex->nTx());
 				}
 			}
+// 			std::cout << "pindex.height =" << pindex->nHeight << std::endl;
+// 			std::cout << "pindex.nChainTx =" << pindex->nChainTx()<< std::endl;
+// 			std::cout << "pindex.time =" << pindex->nTime() << std::endl;
+
 		if (pindex->IsValid(BLOCK_VALID_TRANSACTIONS) && (pindex->nChainTx() || pindex->pprev == NULL))
 			setBlockIndexCandidates.insert(pindex);
 		if (pindex->nStatus() & BLOCK_FAILED_MASK && (!pindexBestInvalid || pindex->nChainWork() > pindexBestInvalid->nChainWork()))

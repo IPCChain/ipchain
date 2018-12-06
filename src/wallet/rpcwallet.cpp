@@ -558,7 +558,7 @@ static void MultiNormalSendMoney(const CTxDestination &address, std::string& str
 	moneynums.insert(pair<std::string, CAmount>(straddress, namount));
 	pwalletMain->AvailableUnionCoins(moneynums);
 	CAmount curBalance = moneynums[straddress];
-	std::cout << "curBalance  = " << straddress << "/" << curBalance << std::endl;
+	std::cout << "curBalance  = " << straddress << "/" << curBalance << std::endl;		
 	
 	// Check amount
 	if (nValue <= 0)
