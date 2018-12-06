@@ -4391,6 +4391,7 @@ static bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state
 // Exposed wrapper for AcceptBlockHeader
 bool ProcessNewBlockHeaders(const std::vector<CBlockHeader>& headers, CValidationState& state, const CChainParams& chainparams, const CBlockIndex** ppindex)
 {
+	LogPrintf("[ProcessNewBlockHeaders] headers  ,Beign .\n");
     {
         LOCK(cs_main);
         for (const CBlockHeader& header : headers) {
@@ -4402,9 +4403,12 @@ bool ProcessNewBlockHeaders(const std::vector<CBlockHeader>& headers, CValidatio
             if (ppindex) {
                 *ppindex = pindex;
             }
+			if (pindex)
+				LogPrintf("[ProcessNewBlockHeaders]  height= %d .\n",pindex->nHeight);
         }
     }
     NotifyHeaderTip();
+	LogPrintf("[ProcessNewBlockHeaders] headers height ,End .\n");
     return true;
 }
 

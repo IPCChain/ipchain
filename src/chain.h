@@ -749,11 +749,11 @@ public:
 	unsigned int nNonce;
 
 	//add by song 2017/8/3 for DPOS 
-	//该时段共识的人数
+    //Number of consensus during that period
 	int32_t  nPeriodCount;
-	//本轮共识开始的时间点，秒
+    //The starting time of this round of consensus, seconds
 	int64_t  nPeriodStartTime;
-	// 时段，一轮共识中的第几个时间段，可以验证的共识的人
+    // Time period, the number of time periods in a round of consensus, verifiable consensus people
 	int32_t  nTimePeriod;
 
 	//! (memory only) Sequential id assigned to distinguish order in which blocks are received.
@@ -932,7 +932,7 @@ public:
     CBlockLocator GetLocator(const CBlockIndex *pindex = NULL) const;
 
     /** Find the last common block between this chain and a block index entry. 
-	找到这个链和块索引条目之间的最后一个公共块*/
+    Find the last common block between the chain and block index entries*/
     const CBlockIndex *FindFork(const CBlockIndex *pindex) const;
 
     /** Find the earliest block with timestamp equal or greater than the given. */
