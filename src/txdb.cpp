@@ -12,67 +12,7 @@
 #include"validation.h"
 #include <stdint.h>
 #include <boost/thread.hpp>
-////++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-//#include <stdlib.h>
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <unistd.h>
-//#include <assert.h>
-//
-//#define VMRSS_LINE 22//VMRSS???, ?:???????,????????.
-//
-//#define pid_t  int
-//
-//int static get_phy_mem(const pid_t p)
-//{
-//	char file[64] = { 0 };//???
-//	FILE *fd;         //??????fd
-//	char line_buff[256] = { 0 };  //???????
-//	sprintf(file, "/proc/%d/status", p);
-//	//fprintf (stderr, "current pid:%d\n", p);
-//	fd = fopen(file, "r"); //?R?????????????fd
-//
-//						   //??vmrss:????????
-//	int i;
-//	char name[32];//??????
-//	int vmrss;//????
-//			  //??VmRSS??????
-//	for (i = 0; i < VMRSS_LINE - 1; i++)
-//	{
-//		char* ret = fgets(line_buff, sizeof(line_buff), fd);
-//	}
-//	char* ret1 = fgets(line_buff, sizeof(line_buff), fd);
-//	sscanf(line_buff, "%s %d", name, &vmrss);
-//	//fprintf (stderr, "====%s?%d====\n", name,vmrss);
-//	fclose(fd);     //????fd
-//	return vmrss;
-//}
-//
-//
-//int static get_rmem(pid_t p)
-//{
-//	return get_phy_mem(p);
-//}
-//
-//
-//int static get_total_mem()
-//{
-//	const char* file = "/proc/meminfo";//???
-//	FILE *fd;         //??????fd
-//	char line_buff[256] = { 0 };  //???????
-//	fd = fopen(file, "r"); //?R?????????????fd
-//
-//						   //??memtotal:???????
-//	int i;
-//	char name[32];//??????
-//	int memtotal;//????????
-//	char*ret = fgets(line_buff, sizeof(line_buff), fd);//??memtotal??????,memtotal??1?
-//	sscanf(line_buff, "%s %d", name, &memtotal);
-//	//fprintf (stderr, "====%s?%d====\n", name,memtotal);
-//	fclose(fd);     //????fd
-//	return memtotal;
-//}
-////+++++++++++++++++++++++++
+
 static const char DB_COINS = 'c';
 static const char DB_BLOCK_FILES = 'f';
 static const char DB_TXINDEX = 't';
@@ -265,13 +205,12 @@ bool CBlockTreeDB::LoadBlockIndexGuts(boost::function<CBlockIndex*(const uint256
 				pindexNew->nPeriodStartTime(diskindex.nPeriodStartTime);
 				pindexNew->nTimePeriod(diskindex.nTimePeriod);
 
-				// 注释掉 by song
-				//  使用DPOS共识，这种检验就不用。
+
+                //  by song  With DPOS consensus, this test is not needed.
 				 if (!CheckProofOfWork(pindexNew->GetBlockHash(), pindexNew->nBits(), Params().GetConsensus()))
                     return error("LoadBlockIndex(): CheckProofOfWork failed: %s", pindexNew->ToString());
 
-				// 需要不需要新的共识。
-				//  ????
+
                 pcursor->Next();
 				cacheNumber++;
 
