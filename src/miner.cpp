@@ -173,7 +173,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
                        ? nMedianTimePast
                        : pblock->GetBlockTime();
 
-	LogPrintf("[BlockAssembler::CreateNewBlock] IsWitnessEnabled begin");
+	//LogPrintf("[BlockAssembler::CreateNewBlock] IsWitnessEnabled begin");
     // Decide whether to include witness transactions
     // This is only needed in case the witness softfork activation is reverted
     // (which would require a very deep reorganization) or when
@@ -182,7 +182,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     // transaction (which in most cases can be a no-op).
     fIncludeWitness = IsWitnessEnabled(pindexPrev, chainparams.GetConsensus()) && fMineWitnessTx;
 
-	LogPrintf("[BlockAssembler::CreateNewBlock] IsWitnessEnabled end");
+	//LogPrintf("[BlockAssembler::CreateNewBlock] IsWitnessEnabled end \n");
     addPriorityTxs();
     int nPackagesSelected = 0;
     int nDescendantsUpdated = 0;
@@ -204,17 +204,17 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 	coinbaseTx.vout[0].txType = TXOUT_NORMAL;	
     coinbaseTx.vin[0].scriptSig = CScript() << nHeight << OP_0;
 
-	LogPrintf("[BlockAssembler::CreateNewBlock] AddDPOCCoinbaseToBlock begin");
+	LogPrintf("[BlockAssembler::CreateNewBlock] AddDPOCCoinbaseToBlock begin \n");
 	//std::cout << "CreateNewBlock() call AddDPOCCoinbaseToBlock" << std::endl;
 	//在coinbase中添加退款、违规、签名
 	if (!CConsensusAccountPool::Instance().AddDPOCCoinbaseToBlock(pblock, pindexPrev, blockHeight, coinbaseTx)) {
 	//	std::cout << "CreateNewBlock ERROR!" << std::endl;
-		LogPrintf("[BlockAssembler::CreateNewBlock] AddDPOCCoinbaseToBlock() is badly");
+		LogPrintf("[BlockAssembler::CreateNewBlock] AddDPOCCoinbaseToBlock() is badly \n");
 		return nullptr;
 	}
 	std::cout << "CreateNewBlock() finish calling of AddDPOCCoinbaseToBlock" << std::endl;
 
-	LogPrintf("[BlockAssembler::CreateNewBlock] AddDPOCCoinbaseToBlock end");
+	LogPrintf("[BlockAssembler::CreateNewBlock] AddDPOCCoinbaseToBlock end \n");
 
     pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
 	//modified by xxy  注释下句  解决coinbase交易中vout中多出一个类型为255vout的问题。
@@ -223,7 +223,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     pblocktemplate->vTxFees[0] = -nFees;
 
 
-	LogPrintf("[BlockAssembler::CreateNewBlock] nSerializeSize begin");
+	LogPrintf("[BlockAssembler::CreateNewBlock] nSerializeSize begin \n");
 
     uint64_t nSerializeSize = GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION);
     LogPrintf("CreateNewBlock(): total size: %u block weight: %u txs: %u fees: %ld sigops %d\n", nSerializeSize, GetBlockWeight(*pblock), nBlockTx, nFees, nBlockSigOpsCost);
@@ -246,7 +246,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
    
     pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx[0]);
 
-	LogPrintf("[BlockAssembler::CreateNewBlock] nSerializeSize end");
+	LogPrintf("[BlockAssembler::CreateNewBlock] nSerializeSize end \n");
     CValidationState state;
     if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
         throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
@@ -254,7 +254,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     int64_t nTime2 = GetTimeMicros();
 
     LogPrint("bench", "CreateNewBlock() packages: %.2fms (%d packages, %d updated descendants), validity: %.2fms (total %.2fms)\n", 0.001 * (nTime1 - nTimeStart), nPackagesSelected, nDescendantsUpdated, 0.001 * (nTime2 - nTime1), 0.001 * (nTime2 - nTimeStart));
-	LogPrintf("[BlockAssembler::CreateNewBlock] end");
+	LogPrintf("[BlockAssembler::CreateNewBlock] end \n");
     return std::move(pblocktemplate);
 }
 

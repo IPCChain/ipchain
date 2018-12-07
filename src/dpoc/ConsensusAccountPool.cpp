@@ -631,12 +631,6 @@ bool CConsensusAccountPool::verifyDPOCTx(const CTransaction& tx, DPOC_errtype &e
 		//If a refund is being processed, the refund transaction cannot be rejoined
 		if (lastsnapshot.curCandidateIndexList.count(pkhashindex))
 		{
-			std::set<uint16_t>::iterator iter = lastsnapshot.curCandidateIndexList.begin();
-			for (;iter!= lastsnapshot.curCandidateIndexList.end();++iter)
-			{
-				LogPrintf("[CConsensusAccountPool::verifyDPOCTx] publickey HASH %d",*iter);
-			}
-			
 			LogPrintf("[CConsensusAccountPool::verifyDPOCTx] The public key HASH is already in the current candidate list %d++%d\n", pkhashindex,lastsnapshot.blockHeight);
 			errorType = JOIN_PUBKEY_ALREADY_EXIST_IN_LIST;
 			return false;
@@ -1893,6 +1887,7 @@ bool CConsensusAccountPool::rollbackCandidatelist(uint32_t nHeight)
 
 bool CConsensusAccountPool::popDPOCBlock( uint32_t blockHeight)
 {
+	LogPrintf("[CConsensusAccountPool::popDPOCBlock]Begin. popBlock to height = %d \n",blockHeight);
 	writeLock wtlock(rwmutex);
 
 	//uint64_t u64NewFileSizeSnapshot = m_mapSnapshotIndex[blockHeight + 1];
@@ -1937,6 +1932,11 @@ bool CConsensusAccountPool::popDPOCBlock( uint32_t blockHeight)
 					candidatelist[tmpIndex].setCredit(tmpCredit);
 					LogPrintf("[CConsensusAccountPool::popDPOCBlock] rollback the public key index=%d directly from the snapshot,To creditValue %d\n", tmpIndex, candidatelist[tmpIndex].getCredit());
 				}
+				else
+				{
+					LogPrintf("[CConsensusAccountPool::popDPOCBlock]revertCredit ---  setCredit erro!\n" );
+				}
+
 			}
 
 			tmpIndex = iterList->second.pkHashIndex;
@@ -2035,7 +2035,7 @@ bool CConsensusAccountPool::AddDPOCCoinbaseToBlock(CBlock* pblockNew, CBlockInde
 	if (!GetLastSnapshot(cursnapshot))
 	{
 		LogPrintf("[CConsensusAccountPool::AddDPOCCoinbaseToBlock] You can't get the latest snapshot, perhaps because the snapshot list is empty and return true\n");
-		return true;
+		return false;
 	}
 
 	std::set<uint16_t>::iterator refundit;
