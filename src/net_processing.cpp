@@ -29,14 +29,28 @@
 #include "utilmoneystr.h"
 #include "utilstrencodings.h"
 #include "validationinterface.h"
+#include "message_cache.h"
 
 #include <boost/thread.hpp>
 
 #if defined(NDEBUG)
-# error "Ipchain cannot be compiled without assertions."
+# error "Bitcoin cannot be compiled without assertions."
 #endif
 
+extern boost::mutex g_vote_mutex;
+extern CDBWrapper *g_pDBVote;
+
 std::atomic<int64_t> nTimeBestReceived(0); // Used only to inform the wallet of when we last received a block
+
+#define           MAX_ITEAM_SUM       1024
+/*
+std::set<uint256> have_broadcast_msg;
+std::set<uint256> have_broadcast_block;
+std::set<uint256> have_broadcast_votes2;
+*/
+
+MessageCache have_broadcast_msg(500);
+MessageCache have_broadcast_block(500);
 
 struct IteratorComparator
 {
@@ -370,8 +384,8 @@ void ProcessBlockAvailability(NodeId nodeid) {
 
     if (!state->hashLastUnknownBlock.IsNull()) {
         BlockMap::iterator itOld = mapBlockIndex.find(state->hashLastUnknownBlock);
-        if (itOld != mapBlockIndex.end() && itOld->second->nChainWork() > 0) {
-            if (state->pindexBestKnownBlock == NULL || itOld->second->nChainWork() >= state->pindexBestKnownBlock->nChainWork())
+        if (itOld != mapBlockIndex.end() && itOld->second->nChainWork > 0) {
+            if (state->pindexBestKnownBlock == NULL || itOld->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
                 state->pindexBestKnownBlock = itOld->second;
             state->hashLastUnknownBlock.SetNull();
         }
@@ -386,9 +400,9 @@ void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash) {
     ProcessBlockAvailability(nodeid);
 
     BlockMap::iterator it = mapBlockIndex.find(hash);
-    if (it != mapBlockIndex.end() && it->second->nChainWork() > 0) {
+    if (it != mapBlockIndex.end() && it->second->nChainWork > 0) {
         // An actually better block was announced.
-        if (state->pindexBestKnownBlock == NULL || it->second->nChainWork() >= state->pindexBestKnownBlock->nChainWork())
+        if (state->pindexBestKnownBlock == NULL || it->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
             state->pindexBestKnownBlock = it->second;
     } else {
         // An unknown block was announced; just assume that the latest one is the best one.
@@ -479,7 +493,7 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<con
     // Make sure pindexBestKnownBlock is up to date, we'll need it.
     ProcessBlockAvailability(nodeid);
 
-    if (state->pindexBestKnownBlock == NULL || state->pindexBestKnownBlock->nChainWork() < chainActive.Tip()->nChainWork()) {
+    if (state->pindexBestKnownBlock == NULL || state->pindexBestKnownBlock->nChainWork < chainActive.Tip()->nChainWork) {
         // This peer has nothing interesting.
         return;
     }
@@ -529,8 +543,8 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<con
                 // We wouldn't download this block or its descendants from this peer.
                 return;
             }
-            if (pindex->nStatus() & BLOCK_HAVE_DATA || chainActive.Contains(pindex)) {
-                if (pindex->nChainTx())
+            if (pindex->nStatus & BLOCK_HAVE_DATA || chainActive.Contains(pindex)) {
+                if (pindex->nChainTx)
                     state->pindexLastCommonBlock = pindex;
             } else if (mapBlocksInFlight.count(pindex->GetBlockHash()) == 0) {
                 // The block is not already downloaded, and not yet in flight.
@@ -809,11 +823,27 @@ void PeerLogicValidation::NewPoWValidBlock(const CBlockIndex *pindex, const std:
         // If the peer has, or we announced to them the previous block already,
         // but we don't think they have this one, go ahead and announce it
         if (state.fPreferHeaderAndIDs && (!fWitnessEnabled || state.fWantsCmpctWitness) &&
-                !PeerHasHeader(&state, pindex) && PeerHasHeader(&state, pindex->pprev)) {
+                !PeerHasHeader(&state, pindex) && PeerHasHeader(&state, pindex->pprev))
+		 {
 
             LogPrint("net", "%s sending header-and-ids %s to peer=%d\n", "PeerLogicValidation::NewPoWValidBlock",
                     hashBlock.ToString(), pnode->id);
-            connman->PushMessage(pnode, msgMaker.Make(NetMsgType::CMPCTBLOCK, *pcmpctblock));
+
+			{
+     		 	std::set<CVote> vote2s;
+				bool have_vote = g_pDBVote->Read (hashBlock, vote2s);
+
+				if (have_vote)
+				{
+					connman->PushMessage(pnode, msgMaker.Make(NetMsgType::PUT_VOTE, vote2s));
+				}
+				else
+				{
+					std::cout << "0-----nnn\n";
+				}
+			}
+
+            connman->PushMessage(pnode, msgMaker.Make(NetMsgType::CMPCTBLOCK, *pcmpctblock)); //mgwang
             state.pindexBestHeaderSent = pindex;
         }
     });
@@ -996,7 +1026,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                 BlockMap::iterator mi = mapBlockIndex.find(inv.hash);
                 if (mi != mapBlockIndex.end())
                 {
-                    if (mi->second->nChainTx() && !mi->second->IsValid(BLOCK_VALID_SCRIPTS) &&
+                    if (mi->second->nChainTx && !mi->second->IsValid(BLOCK_VALID_SCRIPTS) &&
                             mi->second->IsValid(BLOCK_VALID_TREE)) {
                         // If we have the block and all of its parents, but have not yet validated it,
                         // we might be in the middle of connecting it (ie in the unlock of cs_main
@@ -1039,16 +1069,44 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                 }
                 // Pruned nodes may have deleted the block, so check whether
                 // it's available before trying to send.
-                if (send && (mi->second->nStatus() & BLOCK_HAVE_DATA))
+                if (send && (mi->second->nStatus & BLOCK_HAVE_DATA))
                 {
                     // Send block from disk
                     CBlock block;
+					     std::set<CVote> vote2s;
+						  bool have_vote;
+
                     if (!ReadBlockFromDisk(block, (*mi).second, consensusParams))
+						  {
                         assert(!"cannot load block from disk");
+						  }
+
+							if (IsTendermintConsensusWork())
+							{
+								{
+									boost::lock_guard<boost::mutex> lock{g_vote_mutex};
+									have_vote = g_pDBVote->Read (block.GetHash(), vote2s);
+								}
+
+								if (have_vote)
+								{
+									connman.PushMessage(pfrom, msgMaker.Make(NetMsgType::PUT_VOTE, vote2s));
+								}
+								else
+								{
+									std::cout << "NNNNN\n";
+								}
+							}
+
                     if (inv.type == MSG_BLOCK)
-                        connman.PushMessage(pfrom, msgMaker.Make(SERIALIZE_TRANSACTION_NO_WITNESS, NetMsgType::BLOCK, block));
+						  {
+                        connman.PushMessage(pfrom, msgMaker.Make(SERIALIZE_TRANSACTION_NO_WITNESS, 
+														NetMsgType::BLOCK, block));
+						  }
                     else if (inv.type == MSG_WITNESS_BLOCK)
+						  {
                         connman.PushMessage(pfrom, msgMaker.Make(NetMsgType::BLOCK, block));
+						  }
                     else if (inv.type == MSG_FILTERED_BLOCK)
                     {
                         bool sendMerkleBlock = false;
@@ -1083,11 +1141,33 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                         // instead we respond with the full, non-compact block.
                         bool fPeerWantsWitness = State(pfrom->GetId())->fWantsCmpctWitness;
                         int nSendFlags = fPeerWantsWitness ? 0 : SERIALIZE_TRANSACTION_NO_WITNESS;
-                        if (CanDirectFetch(consensusParams) && mi->second->nHeight >= chainActive.Height() - MAX_CMPCTBLOCK_DEPTH) {
+
+								{
+									std::set<CVote> vote2s;
+									bool have_vote = g_pDBVote->Read (block.GetHash(), vote2s);
+
+									if (have_vote)
+									{
+										connman.PushMessage(pfrom, msgMaker.Make(NetMsgType::PUT_VOTE, vote2s));
+									}
+									else
+									{
+										std::cout << "1-----nnn\n";
+									}
+								}
+
+                        if (CanDirectFetch(consensusParams) && mi->second->nHeight >= chainActive.Height() - MAX_CMPCTBLOCK_DEPTH)
+								{
+
                             CBlockHeaderAndShortTxIDs cmpctblock(block, fPeerWantsWitness);
-                            connman.PushMessage(pfrom, msgMaker.Make(nSendFlags, NetMsgType::CMPCTBLOCK, cmpctblock));
-                        } else
+
+ 
+                            connman.PushMessage(pfrom, msgMaker.Make(nSendFlags, NetMsgType::CMPCTBLOCK, cmpctblock)); //mgwang
+                        }
+								else
+								{
                             connman.PushMessage(pfrom, msgMaker.Make(nSendFlags, NetMsgType::BLOCK, block));
+								}
                     }
 
                     // Trigger the peer node to send a getblocks request for the next batch of inventory
@@ -1156,8 +1236,11 @@ uint32_t GetFetchFlags(CNode* pfrom, const CBlockIndex* pprev, const Consensus::
     return nFetchFlags;
 }
 
-inline void static SendBlockTransactions(const CBlock& block, const BlockTransactionsRequest& req, CNode* pfrom, CConnman& connman) {
-    BlockTransactions resp(req);
+inline void static SendBlockTransactions(const CBlock& block, const BlockTransactionsRequest& req, CNode* pfrom, CConnman& connman)
+{
+   BlockTransactions resp(req);
+
+	std::cout << "BLOCKTXN\n";
     for (size_t i = 0; i < req.indexes.size(); i++) {
         if (req.indexes[i] >= block.vtx.size()) {
             LOCK(cs_main);
@@ -1172,6 +1255,22 @@ inline void static SendBlockTransactions(const CBlock& block, const BlockTransac
     LOCK(cs_main);
     const CNetMsgMaker msgMaker(pfrom->GetSendVersion());
     int nSendFlags = State(pfrom->GetId())->fWantsCmpctWitness ? 0 : SERIALIZE_TRANSACTION_NO_WITNESS;
+
+	//if (IsTendermintConsensusWork ())
+	{
+      std::set<CVote> vote2s;
+		bool have_vote = g_pDBVote->Read (block.GetHash(), vote2s);
+
+		if (have_vote)
+		{
+			connman.PushMessage(pfrom, msgMaker.Make(NetMsgType::PUT_VOTE, vote2s));
+		}
+		else
+		{
+			std::cout << "-----nnn\n";
+		}
+	}
+
     connman.PushMessage(pfrom, msgMaker.Make(nSendFlags, NetMsgType::BLOCKTXN, resp));
 }
 
@@ -1659,7 +1758,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             // If pruning, don't inv blocks unless we have on disk and are likely to still have
             // for some reasonable time window (1 hour) that block relay might require.
             const int nPrunedBlocksLikelyToHave = MIN_BLOCKS_TO_KEEP - 3600 / chainparams.GetConsensus().nPowTargetSpacing;
-            if (fPruneMode && (!(pindex->nStatus() & BLOCK_HAVE_DATA) || pindex->nHeight <= chainActive.Tip()->nHeight - nPrunedBlocksLikelyToHave))
+            if (fPruneMode && (!(pindex->nStatus & BLOCK_HAVE_DATA) || pindex->nHeight <= chainActive.Tip()->nHeight - nPrunedBlocksLikelyToHave))
             {
                 LogPrint("net", " getblocks stopping, pruned or too old block at %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
                 break;
@@ -1697,7 +1796,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         LOCK(cs_main);
 
         BlockMap::iterator it = mapBlockIndex.find(req.blockhash);
-        if (it == mapBlockIndex.end() || !(it->second->nStatus() & BLOCK_HAVE_DATA)) {
+        if (it == mapBlockIndex.end() || !(it->second->nStatus & BLOCK_HAVE_DATA)) {
             LogPrintf("Peer %d sent us a getblocktxn for a block we don't have", pfrom->id);
             return true;
         }
@@ -1725,7 +1824,6 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
 
         SendBlockTransactions(block, req, pfrom, connman);
     }
-
 
     else if (strCommand == NetMsgType::GETHEADERS)
     {
@@ -2008,6 +2106,8 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             }
         }
 
+		  std::cout << "AAAAAAAAAA!!\n";
+
         // When we succeed in decoding a block's txids from a cmpctblock
         // message we typically jump to the BLOCKTXN handling code, with a
         // dummy (empty) BLOCKTXN message, to re-use the logic there in
@@ -2034,11 +2134,11 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         std::map<uint256, std::pair<NodeId, std::list<QueuedBlock>::iterator> >::iterator blockInFlightIt = mapBlocksInFlight.find(pindex->GetBlockHash());
         bool fAlreadyInFlight = blockInFlightIt != mapBlocksInFlight.end();
 
-        if (pindex->nStatus() & BLOCK_HAVE_DATA) // Nothing to do here
+        if (pindex->nStatus & BLOCK_HAVE_DATA) // Nothing to do here
             return true;
 
-        if (pindex->nChainWork() <= chainActive.Tip()->nChainWork() || // We know something better
-                pindex->nTx() != 0) { // We had this block at some point, but pruned it
+        if (pindex->nChainWork <= chainActive.Tip()->nChainWork || // We know something better
+                pindex->nTx != 0) { // We had this block at some point, but pruned it
             if (fAlreadyInFlight) {
                 // We requested this block for some reason, but our mempool will probably be useless
                 // so we just grab the block via normal getdata
@@ -2159,7 +2259,15 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
                 mapBlockSource.emplace(pblock->GetHash(), std::make_pair(pfrom->GetId(), false));
             }
             bool fNewBlock = false;
-            ProcessNewBlock(chainparams, pblock, true, &fNewBlock);
+				if (CheckBlockVote2 (pblock))
+				{
+            	ProcessNewBlock(chainparams, pblock, true, &fNewBlock);
+				}
+				else
+				{
+					std::cout << "vote !!!!" << std::endl;
+				}
+				std::cout << "00000000000000000" << std::endl;
             if (fNewBlock)
                 pfrom->nLastBlockTime = GetTime();
 
@@ -2233,16 +2341,26 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
                 mapBlockSource.emplace(resp.blockhash, std::make_pair(pfrom->GetId(), false));
             }
         } // Don't hold cs_main when we call into ProcessNewBlock
-        if (fBlockRead) {
-            bool fNewBlock = false;
-            // Since we requested this block (it was in mapBlocksInFlight), force it to be processed,
-            // even if it would not be a candidate for new tip (missing previous block, chain not long enough, etc)
-			
-			ProcessNewBlock(chainparams, pblock, true, &fNewBlock);
-			
-            if (fNewBlock)
-                pfrom->nLastBlockTime = GetTime();
-        }
+
+        if (fBlockRead)
+		  {
+			  bool fNewBlock = false;
+			  // Since we requested this block (it was in mapBlocksInFlight), force it to be processed,
+			  // even if it would not be a candidate for new tip (missing previous block, chain not long enough, etc)
+
+			  if (CheckBlockVote2 (pblock))
+			  {
+				  ProcessNewBlock(chainparams, pblock, true, &fNewBlock);
+			  }
+			  else
+			  {
+				  std::cout << "vote !!!" << std::endl;
+			  }
+			  std::cout << "11111111111111111" << std::endl;
+
+			  if (fNewBlock)
+				  pfrom->nLastBlockTime = GetTime();
+		  }
     }
 
 
@@ -2348,12 +2466,12 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         bool fCanDirectFetch = CanDirectFetch(chainparams.GetConsensus());
         // If this set of headers is valid and ends in a block with at least as
         // much work as our tip, download as much as possible.
-        if (fCanDirectFetch && pindexLast->IsValid(BLOCK_VALID_TREE) && chainActive.Tip()->nChainWork() <= pindexLast->nChainWork()) {
+        if (fCanDirectFetch && pindexLast->IsValid(BLOCK_VALID_TREE) && chainActive.Tip()->nChainWork <= pindexLast->nChainWork) {
             std::vector<const CBlockIndex*> vToFetch;
             const CBlockIndex *pindexWalk = pindexLast;
             // Calculate all the blocks we'd need to switch to pindexLast, up to a limit.
             while (pindexWalk && !chainActive.Contains(pindexWalk) && vToFetch.size() <= MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
-                if (!(pindexWalk->nStatus()& BLOCK_HAVE_DATA) &&
+                if (!(pindexWalk->nStatus & BLOCK_HAVE_DATA) &&
                         !mapBlocksInFlight.count(pindexWalk->GetBlockHash()) &&
                         (!IsWitnessEnabled(pindexWalk->pprev, chainparams.GetConsensus()) || State(pfrom->GetId())->fHaveWitness)) {
                     // We don't have this block, and it's not yet in flight.
@@ -2423,12 +2541,19 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         }
 		bool fNewBlock = false;
 		
-		ProcessNewBlock(chainparams, pblock, forceProcessing, &fNewBlock);
+		if (CheckBlockVote2 (pblock))
+		{
+			ProcessNewBlock(chainparams, pblock, forceProcessing, &fNewBlock);
+		}
+		else
+		{
+			std::cout << "vote !!!!!!" << std::endl;
+		}
+		std::cout << "22222222222222222" << std::endl;
 		
-        if (fNewBlock)
+		if (fNewBlock)
             pfrom->nLastBlockTime = GetTime();
     }
-
 
     else if (strCommand == NetMsgType::GETADDR)
     {
@@ -2480,7 +2605,6 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         pfrom->fSendMempool = true;
     }
 
-
     else if (strCommand == NetMsgType::PING)
     {
         if (pfrom->nVersion > BIP0031_VERSION)
@@ -2510,6 +2634,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         size_t nAvail = vRecv.in_avail();
         bool bPingFinished = false;
         std::string sProblem;
+
 
         if (nAvail >= sizeof(nonce)) {
             vRecv >> nonce;
@@ -2631,6 +2756,101 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         }
     }
 
+    else if (strCommand == NetMsgType::VOTE)
+	 {
+		CVote  p_vote;
+
+		vRecv >> p_vote;
+
+		if (false == have_broadcast_msg.Exist (p_vote.GetHash()))
+		{
+			have_broadcast_msg.Insert (p_vote.GetHash());
+
+			connman.ForEachNode
+			(
+				[&p_vote, &msgMaker, &connman](CNode* pnode)
+				{
+					connman.PushMessage(pnode, msgMaker.Make(NetMsgType::VOTE, p_vote));
+				}
+			);
+			ProcessVote (p_vote, chainparams);
+		}
+
+	 }
+
+    else if (strCommand == NetMsgType::PUT_BLOCK)
+	 {
+		 std::shared_ptr<CBlock> p_block;
+		 p_block.reset (new CBlock());
+
+		 vRecv >> *p_block;
+
+		 if (false == have_broadcast_block.Exist (p_block->GetHash()))
+		 {
+		  	bool if_ok;
+		 	CValidationState state;
+
+			have_broadcast_block.Insert (p_block->GetHash());
+
+			if_ok = CheckBlock(*p_block, state, chainparams.GetConsensus(), false, true);
+		 	ProcessBlock (p_block, if_ok);
+		 }
+
+	 }
+
+	/*
+    else if (strCommand == NetMsgType::BROADCAST_VOTE)
+	 {
+		 std::set<CVote>  vote2;
+
+		 vRecv >> vote2;
+
+		 auto p_tmp = vote2.begin ();
+
+		 auto search = have_broadcast_votes2.find(p_tmp->block_hash);
+
+		if (search == have_broadcast_votes2.end())
+		{
+			have_broadcast_votes2.insert (p_tmp->block_hash);
+
+		   boost::lock_guard<boost::mutex> lock{g_vote_mutex};
+
+			connman.ForEachNode
+			(
+				[&vote2, &msgMaker, &connman](CNode* pnode)
+				{
+					connman.PushMessage(pnode, msgMaker.Make(NetMsgType::BROADCAST_VOTE, vote2));
+				}
+			);
+			bool gege;
+		 	gege = g_pDBVote->Write (p_tmp->block_hash, vote2);
+		}
+		else
+		{
+			if (have_broadcast_votes2.size () > MAX_ITEAM_SUM)
+			{
+				have_broadcast_votes2.clear ();
+			}
+		}
+
+	 }
+	 */
+
+    else if (strCommand == NetMsgType::PUT_VOTE)
+	 {
+		 std::set<CVote>  vote2s;
+
+		 boost::lock_guard<boost::mutex> lock{g_vote_mutex};
+
+		 vRecv >> vote2s;
+
+		 auto tmp = vote2s.begin ();
+		 bool ret_vv;
+
+		 ret_vv = g_pDBVote->Write (tmp->block_hash, vote2s);
+
+		 std::cout << tmp->block_hash.GetHex () << " : " << ret_vv << "\n";
+	 }
     else if (strCommand == NetMsgType::NOTFOUND) {
         // We do not care about the NOTFOUND message, but logging an Unknown Command
         // message would be undesirable as we transmit it ourselves.
@@ -2640,8 +2860,6 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         // Ignore unknown commands for extensibility
         LogPrint("net", "Unknown command \"%s\" from peer=%d\n", SanitizeString(strCommand), pfrom->id);
     }
-
-
 
     return true;
 }
@@ -3005,7 +3223,8 @@ bool SendMessages(CNode* pto, CConnman& connman, const std::atomic<bool>& interr
                     }
                 }
             }
-            if (!fRevertToInv && !vHeaders.empty()) {
+            if (!fRevertToInv && !vHeaders.empty())
+				{
                 if (vHeaders.size() == 1 && state.fPreferHeaderAndIDs) {
                     // We only send up to 1 block as header-and-ids, as otherwise
                     // probably means we're doing an initial-ish-sync or they're slow
@@ -3014,10 +3233,25 @@ bool SendMessages(CNode* pto, CConnman& connman, const std::atomic<bool>& interr
 
                     int nSendFlags = state.fWantsCmpctWitness ? 0 : SERIALIZE_TRANSACTION_NO_WITNESS;
 
+					     {
+  				  		    std::set<CVote> vote2s;
+					      bool have_vote = g_pDBVote->Read (most_recent_block_hash, vote2s);
+
+					      if (have_vote)
+      					{
+					         connman.PushMessage(pto, msgMaker.Make(NetMsgType::PUT_VOTE, vote2s));
+      					}
+					      else
+      					{
+					         std::cout << "2-----nnn\n";
+      					}
+   				}
+
                     bool fGotBlockFromCache = false;
                     {
                         LOCK(cs_most_recent_block);
-                        if (most_recent_block_hash == pBestIndex->GetBlockHash()) {
+                        if (most_recent_block_hash == pBestIndex->GetBlockHash()) //mgwang
+								{
                             if (state.fWantsCmpctWitness)
                                 connman.PushMessage(pto, msgMaker.Make(nSendFlags, NetMsgType::CMPCTBLOCK, *most_recent_compact_block));
                             else {
@@ -3027,7 +3261,8 @@ bool SendMessages(CNode* pto, CConnman& connman, const std::atomic<bool>& interr
                             fGotBlockFromCache = true;
                         }
                     }
-                    if (!fGotBlockFromCache) {
+                    if (!fGotBlockFromCache)
+						  {
                         CBlock block;
                         bool ret = ReadBlockFromDisk(block, pBestIndex, consensusParams);
                         assert(ret);
