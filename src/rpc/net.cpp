@@ -18,6 +18,7 @@
 #include "util.h"
 #include "utilstrencodings.h"
 #include "version.h"
+#include "netmessagemaker.h"
 
 #include <boost/foreach.hpp>
 
@@ -189,6 +190,27 @@ UniValue getpeerinfo(const JSONRPCRequest& request)
     return ret;
 }
 
+UniValue broadcast(const JSONRPCRequest& request)
+{
+	string strCommand;
+
+	const CNetMsgMaker msgMaker(PROTOCOL_VERSION);
+
+	strCommand = request.params[0].get_str();
+
+	UniValue results(UniValue::VARR);
+
+	results.push_back (strCommand);
+
+	g_connman->ForEachNode([&strCommand, &msgMaker](CNode* pnode){
+		            g_connman->PushMessage(pnode, msgMaker.Make(NetMsgType::VOTE, strCommand));
+														}
+								);
+
+	return results;
+	//return NullUniValue;
+}
+
 UniValue addnode(const JSONRPCRequest& request)
 {
     string strCommand;
@@ -288,7 +310,7 @@ UniValue getaddednodeinfo(const JSONRPCRequest& request)
             "    \"connected\" : true|false,          (boolean) If connected\n"
             "    \"addresses\" : [                    (list of objects) Only when connected = true\n"
             "       {\n"
-            "         \"address\" : \"192.168.0.201:8333\",  (string) The ipchain server IP and port we're connected to\n"
+            "         \"address\" : \"192.168.0.201:8333\",  (string) The bitcoin server IP and port we're connected to\n"
             "         \"connected\" : \"outbound\"           (string) connection, inbound or outbound\n"
             "       }\n"
             "     ]\n"
@@ -624,6 +646,7 @@ static const CRPCCommand commands[] =
     { "network",            "ping",                   &ping,                   true,  {} },
     { "network",            "getpeerinfo",            &getpeerinfo,            true,  {} },
     { "network",            "addnode",                &addnode,                true,  {"node","command"} },
+    { "network",            "broadcast",              &broadcast,              true,  {"node","command"} },
     { "network",            "disconnectnode",         &disconnectnode,         true,  {"address"} },
     { "network",            "getaddednodeinfo",       &getaddednodeinfo,       true,  {"node"} },
     { "network",            "getnettotals",           &getnettotals,           true,  {} },
