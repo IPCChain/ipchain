@@ -162,7 +162,6 @@ static const int MAX_UNCONNECTING_HEADERS = 10;
 static const bool DEFAULT_PEERBLOOMFILTERS = true;
 extern std::map<std::string, TokenRegLabel> tokenDataMap;	//Token map    key:symnbol   value:TokenRegLabel
 bool getAddressBalanceByTxlevel(std::string& address, CAmount& balance, CAmount& received, CAmount& sended, uint64_t& txidnum);
-bool getTokenBalanceByAddress(std::string& address,std::string& tokensymbol,CAmount& balance, CAmount& received, CAmount& sended, uint64_t& txidnum);
 
 CAmount Getfeebytxid(const CTransaction tx);   //Gets the transaction fee for the specified transaction
 uint64_t getTokenAllcoins(uint8_t accuracy);  //The maximum of totalCount is registered according to the precision
@@ -257,6 +256,9 @@ static const uint64_t MIN_DISK_SPACE_FOR_BLOCK_FILES = 550 * 1024 * 1024;
  * @return True if state.IsValid()
  */
 bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<const CBlock> pblock, bool fForceProcessing, bool* fNewBlock);
+
+
+bool TendermintProcessNewBlock(uint160 &owner_hash, const CChainParams& chainparams, const std::shared_ptr<const CBlock> pblock, bool fForceProcessing, bool* fNewBlock);
 
 /**
  * Process incoming block headers.
@@ -619,5 +621,13 @@ void DumpMempool();
 
 /** Load the mempool from disk. */
 bool LoadMempool();
+
+void ProcessVote (CVote &vote, const CChainParams& chainparams);
+
+void ProcessBlock (std::shared_ptr<CBlock> p_block, bool ifok);
+
+bool CheckBlockVote2 (const std::shared_ptr<const CBlock> pblock);
+
+bool IsTendermintConsensusWork (void);
 
 #endif // BITCOIN_VALIDATION_H

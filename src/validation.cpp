@@ -3838,15 +3838,16 @@ bool WaitingForVote (uint160 owner_hash, const CBlock& block)
 
 	g_vote_wait_lock = true;
 
-	if (CMeetingItem::g_Account.size() == 1)
-	{
-		return true;
-	}
 
 	while (g_vote_wait_lock && p_counter >0)
 	{
 		MilliSleep (500);
 		p_counter -= 500;
+	}
+
+	if (CMeetingItem::g_Account.size() == 1)
+	{
+		return true;
 	}
 
 	if (p_counter > 0)
@@ -3921,6 +3922,12 @@ static void ProposerToVote (uint160 owner_hash, const CBlock& block)
 	p_vote.nTimePeriod = block.nTimePeriod;
 
 	AddVoteSign (p_vote);
+
+	g_vote.reset(new VoteData());
+	g_vote->owner_hash = owner_hash;
+	g_vote->block_hash = block.GetHash();
+	g_vote->vote1s.clear();
+	g_vote->vote2s.clear();
 
 	g_connman->ForEachNode
 	(
@@ -4480,15 +4487,14 @@ static void SaveVotesToDB ()
 	}
 	*/
 
-	std::cout << "SaveVotesToDB:";
 	if (g_vote)
 	{
+		std::cout << "SaveVotesToDB:" << g_vote->block_hash.GetHex() << "   :  " << g_vote->vote2s.size() << std::endl;
 		bool ret_val;
-
-		g_vote->owner_hash.SetNull ();
-		g_vote->block_hash.SetNull ();
 		ret_val = g_pDBVote->Write (g_vote->block_hash, g_vote->vote2s);
 		std::cout << ret_val;
+		g_vote->owner_hash.SetNull();
+		//g_vote->block_hash.SetNull();
 	}
 
 	std::cout << "\n";
@@ -4600,7 +4606,7 @@ bool CheckBlockVote2 (const std::shared_ptr<const CBlock> pblock)
 		ret_val = g_pDBVote->Read (pblock->GetHash(), vote2s);
 		if (ret_val == false)
 		{
-			std::cout << "db read" << std::endl;
+			std::cout << "[CheckBlockVote2] db read =  false" << std::endl;
 			//return false;
 		}
 
@@ -4638,6 +4644,8 @@ bool CheckBlockVote2 (const std::shared_ptr<const CBlock> pblock)
 
 		for (auto it1 : vote2s)
 		{
+			std::cout << "conList.pk160:" << it->getPubicKey160hash().GetHex() << std::endl;
+			std::cout << "conList.pk160:" << it1.owner_hash .GetHex()<< std::endl;
 			if (it->getPubicKey160hash () == it1.owner_hash)
 			{
 				my_vote2 ++;
@@ -4648,7 +4656,7 @@ bool CheckBlockVote2 (const std::shared_ptr<const CBlock> pblock)
 
 	std::cout << my_vote2 << ": ";
 	std::cout << conList.size() << " \n";
-
+	std::cout << vote2s.size() << " \n";
 	if (my_vote2*3 < conList.size()*2)
 	{
 		std::cout << " small 2/3" << std::endl;
@@ -5433,12 +5441,24 @@ void ProcessVote (CVote &vote, const CChainParams& chainparams)
 	{
 		return;
 	}
+	else
+	{
+		uint160 my160;
+		p_mining.getAccount160Hash(my160);
+		auto iit = CMeetingItem::g_Account.find(my160);
+		if (iit == CMeetingItem::g_Account.end())
+			return;
+	}
 
 	auto it = CMeetingItem::g_Account.find (vote.owner_hash);
 
 	if (it == CMeetingItem::g_Account.end())
 	{
-		std::cout << "get a bad vote !!\n" << std::endl;
+		for (auto nit : (CMeetingItem::g_Account))
+		{
+			std::cout << nit.GetHex() << std::endl;
+		}
+		std::cout << "get a bad vote !!\n --- type =" << vote.type << std::endl;
 		return;
 	}
 
@@ -5487,10 +5507,16 @@ void ProcessVote (CVote &vote, const CChainParams& chainparams)
 
 		if (g_vote == nullptr)
 		{
-			g_vote.reset (new VoteData ());
+			g_vote.reset(new VoteData());
+		}
+		else if (g_vote->block_hash == vote.block_hash && g_vote->owner_hash == vote.owner_hash)
+		{
+			return;
 		}
 		
-		//g_vote->block = nullptr;
+		
+		
+	//	g_vote->block = nullptr;
 		g_vote->owner_hash = vote.owner_hash;
 		g_vote->block_hash = vote.block_hash;
 		g_vote->vote1s.clear ();
@@ -5566,11 +5592,10 @@ void ProcessVote (CVote &vote, const CChainParams& chainparams)
 			{
 				bool fNewBlock = true;
 
-				g_vote->owner_hash.SetNull ();
-				g_vote->block_hash.SetNull ();
-
 				g_pDBVote->Write (g_vote->block_hash, g_vote->vote2s);
 				ProcessNewBlock(chainparams, g_vote->block, true, &fNewBlock);
+				g_vote->owner_hash.SetNull();
+				g_vote->block_hash.SetNull();
 			}
 
 		}
@@ -5596,6 +5621,9 @@ void ProcessBlock (std::shared_ptr<CBlock> p_block, bool is_ok)
 			p_vote.type = CVote::Precommit;
 			p_vote.block_hash = p_block->GetHash ();
 			p_mining.getAccount160Hash (p_vote.owner_hash);
+			auto it = CMeetingItem::g_Account.find(p_vote.owner_hash);
+			if (it == CMeetingItem::g_Account.end())
+				return;
 			p_vote.nPeriodStartTime = p_block->nPeriodStartTime;
 			p_vote.nTimePeriod = p_block->nTimePeriod;
 			AddVoteSign (p_vote);
