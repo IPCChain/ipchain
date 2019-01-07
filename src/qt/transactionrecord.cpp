@@ -389,6 +389,12 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                         int vacc = txout.tokenRegLabel.accuracy;
                         num = getAccuracyNum(vacc,num);
                        }
+					else if(TXOUT_TOKENREG == txout.txType){
+						y = (char*)(txout.addTokenLabel.TokenSymbol);
+						num = QString::number(txout.addTokenLabel.totalCount);//444
+						int vacc = txout.addTokenLabel.accuracy;
+						num = getAccuracyNum(vacc, num);
+					}
                     else{
                         y=(char*)(txout.tokenLabel.TokenSymbol);
                         num=QString::number(txout.tokenLabel.value);//555
@@ -586,7 +592,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     }
 
 
-                    else if(4==txout.txType || 5==txout.txType)
+					else if (4 == txout.txType || 5 == txout.txType || TXOUT_TOKENREG == txout.txType)
                     {
                         ECoinDialog::updatalist();
                         ECoinDialog::m_bNeedUpdateLater = true;
@@ -923,7 +929,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     else if(1==txout.txType)
                     {
                     }
-                    else if(4==txout.txType || 5==txout.txType)
+					else if (4 == txout.txType || 5 == txout.txType || TXOUT_TOKENREG == txout.txType)
                     {
                         m_isplusnOut++;
                         if(m_isplusnOut > 1)
@@ -941,6 +947,11 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                             sub.ecoinNum =QString::number(txout.tokenRegLabel.totalCount);
                             vacc = txout.tokenRegLabel.accuracy;
                         }
+						else if (TXOUT_TOKENREG == txout.txType){
+							y = (char*)(txout.addTokenLabel.TokenSymbol);
+							sub.ecoinNum = QString::number(txout.addTokenLabel.totalCount);
+							vacc = txout.addTokenLabel.accuracy;
+						}
                         else{
                             y=(char*)(txout.tokenLabel.TokenSymbol);
                             sub.ecoinNum =QString::number(txout.tokenLabel.value);

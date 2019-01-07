@@ -782,11 +782,11 @@ UniValue gettokenlabelbysymbol(const JSONRPCRequest& request)
 		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "this tokensymbol has no TokenReg");
 	
 	result.push_back(Pair("tokenSymbol", tokenDataMap[tokensymbol].getTokenSymbol()));
-	result.push_back(Pair("totalCount", ValueFromTCoins(tokenDataMap[tokensymbol].totalCount, (int)tokenDataMap[tokensymbol].accuracy)));
-	result.push_back(Pair("accuracy", tokenDataMap[tokensymbol].accuracy));
-	result.push_back(Pair("tokenhash", tokenDataMap[tokensymbol].hash.GetHex()));
+	result.push_back(Pair("totalCount", ValueFromTCoins(tokenDataMap[tokensymbol].getTotalCount(), (int)tokenDataMap[tokensymbol].getAccuracy())));
+	result.push_back(Pair("accuracy", tokenDataMap[tokensymbol].getAccuracy()));
+	result.push_back(Pair("tokenhash", tokenDataMap[tokensymbol].getHash().GetHex()));
 	result.push_back(Pair("label", tokenDataMap[tokensymbol].getTokenLabel()));
-	result.push_back(Pair("regtime", tokenDataMap[tokensymbol].issueDate));
+	result.push_back(Pair("regtime", tokenDataMap[tokensymbol].getIssueDate()));
 	
 	
 	return result;
@@ -966,7 +966,7 @@ UniValue gettokenbalancebyaddress(const JSONRPCRequest& request)
 	UniValue result(UniValue::VOBJ);
 	result.push_back(Pair("address", straddress));
 	result.push_back(Pair("tokensymbol", tokensymbol));
-	result.push_back(Pair("tokenbalance", ValueFromTCoins(balance, (int)tokenDataMap[tokensymbol].accuracy)));
+	result.push_back(Pair("tokenbalance", ValueFromTCoins(balance, (int)tokenDataMap[tokensymbol].getAccuracy())));
 	return result;
 }
 //end

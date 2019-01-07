@@ -184,11 +184,11 @@ public:
 		consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000000000000000000000");
 
 		 //Version 
-		pchMessageStart[0] = 0x2a;
-		pchMessageStart[1] = 0x28;
-		pchMessageStart[2] = 0x27;
-		pchMessageStart[3] = 0x2c;
-        nDefaultPort = 25166;
+		pchMessageStart[0] = 0x5a;
+		pchMessageStart[1] = 0x58;
+		pchMessageStart[2] = 0x57;
+		pchMessageStart[3] = 0x5c;
+        nDefaultPort = 25167;
         nPruneAfterHeight = 1000;
 
 

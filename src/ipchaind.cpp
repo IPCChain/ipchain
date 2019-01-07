@@ -66,6 +66,9 @@ void WaitForShutdown(boost::thread_group* threadGroup)
 //
 // Start
 //
+
+extern int g_ConsensusSwitchingHeight;
+
 bool AppInit(int argc, char* argv[])
 {
     boost::thread_group threadGroup;
@@ -98,6 +101,9 @@ bool AppInit(int argc, char* argv[])
         fprintf(stdout, "%s", strUsage.c_str());
         return true;
     }
+
+	g_ConsensusSwitchingHeight = GetArg("-ConsensusSwitchingHeight", 120);
+	std::cout << "Consensus Switching Height:" << g_ConsensusSwitchingHeight << std::endl;
 
     try
     {

@@ -214,6 +214,7 @@ libbitcoin_server_a_SOURCES = \
   txmempool.cpp \
   ui_interface.cpp \
   validation.cpp \
+  message_cache.cpp \
   validationinterface.cpp \
   versionbits.cpp \
   dpoc/MeetingItem.cpp \

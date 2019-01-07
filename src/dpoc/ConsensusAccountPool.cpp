@@ -21,6 +21,9 @@
 #include <boost/filesystem.hpp>
 #include "wallet/wallet.h"
 
+extern int g_ConsensusSwitchingHeight;
+
+
 extern CWallet* pwalletMain;
 boost::shared_mutex checkmutex;
 
@@ -467,7 +470,7 @@ CConsensusAccountPool::CConsensusAccountPool()
 	}
 	else if (Params().NetworkIDString() == CBaseChainParams::TESTNET)
 	{
-		//trustPKHashList.push_back("887f8428ddb84e05d3d32b86fb5a15a4d4bf9a0e");
+		trustPKHashList.push_back("887f8428ddb84e05d3d32b86fb5a15a4d4bf9a0e");
 		//trustPKHashList.push_back("3560c2305ad91fa6ce64176e6f7b121205a396eb");
 		//trustPKHashList.push_back("e164855857c576b5963b385cc2a1ee33fb949feb");
 		//TestChain
@@ -765,11 +768,13 @@ bool  CConsensusAccountPool::checkNewBlock(const std::shared_ptr<const CBlock> p
 			errorType = PUNISH_BLOCK;
 			return false;
 		}
+		/*
 		else if ((pblock->nTime - calcTime > MAX_BLOCK_TIME_DIFF) &&(lastsnapshot.blockHeight >= Params().CHECK_START_BLOCKCOUNT))
 		{   //It's possible to have a block delay
 			LogPrintf("[CConsensusAccountPool::checkNewBlock] The packaging time is earlier than the calculation time, or the time difference between the packaging time and the computation time is greater than %d seconds\n", MAX_BLOCK_TIME_DIFF);
 			return false;
 		}
+		*/
 	}
 	
 	//Look for a snapshot of the current session's start time
@@ -806,11 +811,13 @@ bool  CConsensusAccountPool::checkNewBlock(const std::shared_ptr<const CBlock> p
 
 			//Determines whether the end time of the last block found is the start time of the current block
 			//If it is, the block that is missing in the middle is cross-round, and the block is still valid
+			/*
 			if (meetingStartSnapshot.meetingstoptime != pblock->nPeriodStartTime)
 			{
 				LogPrintf("[CConsensusAccountPool::checkNewBlock] The end of the session of the snapshot does not equal the start time of the current block，There may be more than one round，error\n");
 				return false;
 			}
+			*/
 			LogPrintf("[CConsensusAccountPool::checkNewBlock] The end of the session of the snapshot is equal to the starting time of the current block meeting, with the phenomenon of cross-wheel leakage\n");
 		}
 	}
@@ -1505,10 +1512,14 @@ bool CConsensusAccountPool::pushDPOCBlock(const std::shared_ptr<const CBlock> pb
 						break;
 					}
 				}
-				if (founded)
+
+				if (false == IsTendermintConsensusWork())
 				{
-					++iterTimeout;
-					continue;
+					if (founded)
+					{
+						++iterTimeout;
+						continue;
+					}
 				}
 					
 				bool bErase = false;
@@ -2644,13 +2655,15 @@ CAmount CConsensusAccountPool::GetCurDepositAdjust(uint160 pkhash, uint32_t bloc
 {
 	CAmount deposit = Params().MIN_DEPOSI;
 
-	for (std::vector<std::string>::iterator trustit = trustPKHashList.begin();
-		trustit != trustPKHashList.end(); trustit++)
+	if (false == IsTendermintConsensusWork())
 	{
-		if (pkhash.GetHex() == *trustit)
+		for (std::vector<std::string>::iterator trustit = trustPKHashList.begin(); trustit != trustPKHashList.end(); trustit++)
 		{
-			LogPrintf("[CConsensusAccountPool::GetCurDepositThreshold] trust publickey，cash pledge=%d (%f IPC)\n", deposit, (double)deposit / COIN);
-			return deposit;
+			if (pkhash.GetHex() == *trustit)
+			{
+				LogPrintf("[CConsensusAccountPool::GetCurDepositThreshold] trust publickey，cash pledge=%d (%f IPC)\n", deposit, (double)deposit / COIN);
+				return deposit;
+			}
 		}
 	}
 
@@ -3418,6 +3431,12 @@ bool CConsensusAccountPool::verifyPkIsTrustNode(std::string strPublicKey)
 {
 	std::vector<std::string> vecTrustList;
 	getTrustList(vecTrustList);
+
+	if (IsTendermintConsensusWork ())
+	{
+		return true;
+	}
+
 	std::vector<std::string>::iterator iterTrust = vecTrustList.begin();
 	for (; iterTrust != vecTrustList.end(); ++iterTrust)
 	{

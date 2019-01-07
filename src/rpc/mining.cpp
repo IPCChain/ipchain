@@ -156,13 +156,17 @@ UniValue generateBlocks(boost::shared_ptr<CReserveScript> coinbaseScript, int nG
 }
 
 //Rewrite the packaging function to be invoked by the dopackage£¬don't throw error
-UniValue generateBlocksForPackage(boost::shared_ptr<CReserveScript> coinbaseScript, int nGenerate, uint64_t nMaxTries, bool keepScript, uint32_t nPeriodCount = 0, uint64_t  nPeriodStartTime = 0, uint32_t  nTimePeriod = 0)
+UniValue generateBlocksForPackage(uint160 &owner, boost::shared_ptr<CReserveScript> coinbaseScript, 
+											int nGenerate, uint64_t nMaxTries, bool keepScript, 
+											uint32_t nPeriodCount = 0, uint64_t  nPeriodStartTime = 0, 
+											uint32_t  nTimePeriod = 0)
 {
 	//static const int nInnerLoopCount = 0x10000;
 	int nHeightStart = 0;
 	int nHeightEnd = 0;
 	int nHeight = 0;
-	LogPrintf("[generateBlocksForPackage] IN nPeriodCount=%d , nPeriodStartTime=%d , nTimePeriod=%d\n", nPeriodCount, nPeriodStartTime, nTimePeriod);
+	LogPrintf("[generateBlocksForPackage] IN nPeriodCount=%d , nPeriodStartTime=%d , nTimePeriod=%d\n", 
+					nPeriodCount, nPeriodStartTime, nTimePeriod);
 
 	{   // Don't keep cs_main locked
 		LOCK(cs_main);
@@ -192,7 +196,8 @@ UniValue generateBlocksForPackage(boost::shared_ptr<CReserveScript> coinbaseScri
 		}
 
 		std::shared_ptr<const CBlock> shared_pblock = std::make_shared<const CBlock>(*pblock);
-		if (!ProcessNewBlock(Params(), shared_pblock, true, NULL))
+		//if (!ProcessNewBlock(Params(), shared_pblock, true, NULL))
+		if (!TendermintProcessNewBlock(owner, Params(), shared_pblock, true, NULL))
 		{
 			throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
 		}
@@ -297,7 +302,7 @@ void generateDPOCForMeeting(uint160 pubkey160hash ,uint32_t nPeriodCount = 0, ui
 		return;
 	}
 
-	std::cout << "[generateDPOCForMeeting] [GetScriptForMining] hash=" << vchPubKeyOut.GetHash().ToString() << " getID=" << vchPubKeyOut.GetID().ToString() << std::endl;
+	//std::cout << "[generateDPOCForMeeting] [GetScriptForMining] hash=" << vchPubKeyOut.GetHash().ToString() << " getID=" << vchPubKeyOut.GetID().ToString() << std::endl;
 	coinbaseScript = rKey;
 	coinbaseScript->reserveScript = CScript() << ToByteVector(vchPubKeyOut) << OP_CHECKSIG;
 // -------------------------------------------------------------------------------------------------
@@ -315,7 +320,8 @@ void generateDPOCForMeeting(uint160 pubkey160hash ,uint32_t nPeriodCount = 0, ui
 }
 
 //Call the dopackage, not throw
-void generateDPOCForMeetingForPackage(uint160 pubkey160hash, uint32_t nPeriodCount = 0, uint64_t  nPeriodStartTime = 0, uint32_t  nTimePeriod = 0)
+void generateDPOCForMeetingForPackage(uint160 pubkey160hash, uint32_t nPeriodCount = 0, 
+												  uint64_t  nPeriodStartTime = 0, uint32_t  nTimePeriod = 0)
 {
 	int nGenerate = 1;
 	uint64_t nMaxTries = 1000000;
@@ -349,7 +355,8 @@ void generateDPOCForMeetingForPackage(uint160 pubkey160hash, uint32_t nPeriodCou
 	if (coinbaseScript->reserveScript.empty())
 		throw JSONRPCError(RPC_INTERNAL_ERROR, "No coinbase script available (mining requires a wallet)");
 
-	generateBlocksForPackage(coinbaseScript, nGenerate, nMaxTries, true, nPeriodCount, nPeriodStartTime, nTimePeriod);
+	generateBlocksForPackage(pubkey160hash, coinbaseScript, nGenerate, nMaxTries, true, 
+									nPeriodCount, nPeriodStartTime, nTimePeriod);
 
 }
 

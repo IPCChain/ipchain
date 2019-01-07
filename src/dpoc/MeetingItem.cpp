@@ -5,6 +5,10 @@
 #include "ConsensusAccountPool.h"
 #include "../validation.h"
 
+extern int g_ConsensusSwitchingHeight;
+
+std::set <uint160> CMeetingItem::g_Account;
+
 CMeetingItem::CMeetingItem()
 {
 }
@@ -221,12 +225,19 @@ void CMeetingItem::startConsensus()
 	uint160 uMyHash160;
 	localAccount.Get160Hash(uMyHash160);
 	this->myHash160 = uMyHash160;
+
+
+	g_Account.clear ();
+	for (auto it: consensusList)
+	{
+		g_Account.insert (it->getPubicKey160hash());
+	}
 	
 	int nNum = 0;
 	for (std::list<std::shared_ptr<CConsensusAccount>>::iterator it = consensusList.begin(); 
 		 it != consensusList.end(); ++it)
 	{
-		if (g_bStdCout)
+		//if (g_bStdCout)
 		{
 			std::cout << "CMeetingItem::startConsensus in---" << consensusList.size()
 				<< "---Index---" << nNum << "---startTime---" << nPeriodStartTime

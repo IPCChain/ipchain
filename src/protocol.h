@@ -240,6 +240,17 @@ extern const char *GETBLOCKTXN;
  * @since protocol version 70014 as described by BIP 152
  */
 extern const char *BLOCKTXN;
+
+/**
+ * for vote   //wangminggang
+ */
+extern const char *VOTE;
+
+extern const char *PUT_BLOCK;
+
+extern const char *PUT_VOTE;
+
+//extern const char *BROADCAST_VOTE;
 };
 
 /* Get a vector of all valid message types (see above) */

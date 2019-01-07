@@ -147,6 +147,15 @@ struct CRecipient
     bool fSubtractFeeFromAmount; 
 };
 
+struct CRecipientaddtoken
+{
+	CScript  scriptPubKey;
+	uint32_t height;
+	uint64_t tokenvalue;
+	std::string  extendinfo;
+	std::string  txLabel;
+};
+
 struct CRecipientToken
 {
 	CScript scriptPubKey;
@@ -951,6 +960,10 @@ public:
 	//Create token reg trade
 	bool CreateTokenRegTransaction(std::string& strReglabel, const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut,
 		std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true);
+
+	bool CreateAddTokenRegTransactionByStrReglabel(std::string& strReglabel, const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut,
+		std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true);
+	bool CreateAddTokenRegTransaction(std::string& strReglabel, const std::vector<CRecipientaddtoken>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut, std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true);
 	//Create a token trade -- Support only for one address transaction.
 	bool CreateTokenTransaction(std::string& tokensymbol, uint64_t TokenValue, const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut,
 		std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true);

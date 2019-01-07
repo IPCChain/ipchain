@@ -20,6 +20,9 @@ class CDpocMining
 		int getLast2RoundMeetingInfo(int64_t curPeriodStartTime,   int64_t& nPeriodStartTime , int32_t& nPeriodCount);
 		bool GetMeetingList(int64_t nStartTime, std::list<std::shared_ptr<CConsensusAccount>> &conList);
 		bool IsCompleteInit();
+
+		void getAccount160Hash (uint160 &hash);
+
 private:
 	    CDpocMining();
 		std::shared_ptr<CCarditConsensusMeeting> pConsensusMeeting;

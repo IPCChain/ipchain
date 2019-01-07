@@ -157,6 +157,14 @@ public:
 			{
 				READWRITE(txout.tokenLabel);
 			}
+			break;
+		case TXOUT_ADDTOKEN:
+			txout.labelLen = txout.addTokenLabel.size();
+			READWRITE(txout.labelLen);
+			if (txout.labelLen > 0)
+			{
+				READWRITE(txout.addTokenLabel);
+			}
 
 			break;
 		case 0:

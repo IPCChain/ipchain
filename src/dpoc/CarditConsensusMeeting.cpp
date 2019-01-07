@@ -115,6 +115,7 @@ void CCarditConsensusMeeting::doMeeting()
 	return;
 }
 
+
 void CCarditConsensusMeeting::initNewMeetingRound()
 {
 	LogPrintf("[CCarditConsensusMeeting::initNewMeetingRound] begin\n");
@@ -128,15 +129,15 @@ void CCarditConsensusMeeting::initNewMeetingRound()
 void CCarditConsensusMeeting::doPackage()
 {
 	LogPrintf("[CCarditConsensusMeeting::doPackage] begin\n");
-
+	
 	uint160 hash160;
 	localAccount.Get160Hash(hash160);
 	try
 	{
 		generateDPOCForMeetingForPackage(hash160, pCurrentMetting->getPeriodCount(),
-		pCurrentMetting->getPeriodStartTime(),
-		pCurrentMetting->getMyPackageIndex());
-
+			pCurrentMetting->getPeriodStartTime(),
+			pCurrentMetting->getMyPackageIndex());
+	
 		//print out
 		CBlockIndex* pBestBlockIndexss = NULL;
 		{
@@ -161,27 +162,27 @@ void CCarditConsensusMeeting::doPackage()
 		{
 			std::cout <<"---------------------------------------------------"<< std::endl;
 			std::cout << "CCarditConsensusMeeting::doPackage--MeetingStartTime--" << pCurrentMetting->getPeriodStartTime()
-				<< "--MeetingEndTime--" << pCurrentMetting->getPeriodEndTime()
-				<< "--packageTime--" << pCurrentMetting->getMyPackageTime()
-				<< "--packageTimeEnd--" << pCurrentMetting->getMyPackageTimeEnd()
-				<< "--packageIndex--" << pCurrentMetting->getMyPackageIndex()
-				<< "--packageCount--" << pCurrentMetting->getPeriodCount()
-				// << "---Time----" << cTmp
-				<< "-----PackageTime---" << DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pCurrentMetting->getMyPackageTimeEnd() / 1000)
-				<<"---Hight---"<<pBestBlockIndexss->nHeight
-				<<"---Publickey--"<< hash160.GetHex()
-				<< std::endl;
+					  << "--MeetingEndTime--" << pCurrentMetting->getPeriodEndTime()
+					  << "--packageTime--" << pCurrentMetting->getMyPackageTime()
+					  << "--packageTimeEnd--" << pCurrentMetting->getMyPackageTimeEnd()
+					  << "--packageIndex--" << pCurrentMetting->getMyPackageIndex()
+					  << "--packageCount--" << pCurrentMetting->getPeriodCount()
+					 // << "---Time----" << cTmp
+					  << "-----PackageTime---" << DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pCurrentMetting->getMyPackageTimeEnd() / 1000)
+					  <<"---Hight---"<<pBestBlockIndexss->nHeight
+					  <<"---Publickey--"<< hash160.GetHex()
+					  << std::endl;
 			std::cout << "---------------------------------------------------" << std::endl;
 		}
 
 		LogPrintf("[CCarditConsensusMeeting::doPackage] end by-- \
-				MeetingStartTime--%d--MeetingEndTime--%d--packageTime--%d--  \
-				packageTimeEnd--%d--packageIndex--%d--packageCount--%d--  \
-				Time--%s--Hight--%d--Publickey--%s\n",
-				pCurrentMetting->getPeriodStartTime(), pCurrentMetting->getPeriodEndTime(),
-				pCurrentMetting->getMyPackageTime(), pCurrentMetting->getMyPackageTimeEnd(),
-				pCurrentMetting->getMyPackageIndex(), pCurrentMetting->getPeriodCount(),
-				cTmp, pBestBlockIndexss->nHeight, hash160.GetHex());
+				   MeetingStartTime--%d--MeetingEndTime--%d--packageTime--%d--  \
+				   packageTimeEnd--%d--packageIndex--%d--packageCount--%d--  \
+				   Time--%s--Hight--%d--Publickey--%s\n",
+			pCurrentMetting->getPeriodStartTime(), pCurrentMetting->getPeriodEndTime(),
+			pCurrentMetting->getMyPackageTime(), pCurrentMetting->getMyPackageTimeEnd(),
+			pCurrentMetting->getMyPackageIndex(), pCurrentMetting->getPeriodCount(),
+			cTmp, pBestBlockIndexss->nHeight, hash160.GetHex());
 	}
 	catch (std::exception &e)
 	{
@@ -226,8 +227,8 @@ bool CCarditConsensusMeeting::newMeetingRound()
 		return false;
 	}
 
-	int64_t blockStartTime = pBestBlockIndex->nPeriodStartTime;
-	int64_t blockStopTime = pBestBlockIndex->nPeriodStartTime + pBestBlockIndex->nPeriodCount*BLOCK_GEN_TIME;
+	int64_t blockStartTime = pBestBlockIndex->nPeriodStartTime();
+	int64_t blockStopTime = pBestBlockIndex->nPeriodStartTime() + pBestBlockIndex->nPeriodCount()*BLOCK_GEN_TIME;
 	int64_t newMeetingTime = 0;
 
 	// Reset meeting time
@@ -365,8 +366,8 @@ bool CCarditConsensusMeeting::hasCompleteRev()
 			return false;
 		}
 
-		int64_t nMeetEndTime = (pBestBlockIndex->nPeriodStartTime) + (pBestBlockIndex->nPeriodCount*BLOCK_GEN_TIME);
-		int64_t nPackageTime = (pBestBlockIndex->nPeriodStartTime) + (pBestBlockIndex->nTimePeriod+1)*BLOCK_GEN_TIME;
+		int64_t nMeetEndTime = (pBestBlockIndex->nPeriodStartTime()) + (pBestBlockIndex->nPeriodCount()*BLOCK_GEN_TIME);
+		int64_t nPackageTime = (pBestBlockIndex->nPeriodStartTime()) + (pBestBlockIndex->nTimePeriod()+1)*BLOCK_GEN_TIME;
 		int64_t nNowTime = timeService.GetCurrentTimeMillis();
 		
 		//MilliSleep(50);
@@ -402,9 +403,9 @@ bool CCarditConsensusMeeting::hasCompleteRev()
 						else
 						{
 							//nInitPeriodStartTime = timeService.GetCurrentTimeMillis();
-							nNowTime = (nNowTime-pBestBlockIndex->nPeriodStartTime)/(pBestBlockIndex->nPeriodCount*BLOCK_GEN_TIME);
-							nNowTime *= (pBestBlockIndex->nPeriodCount*BLOCK_GEN_TIME);
-							nNowTime += pBestBlockIndex->nPeriodStartTime;
+							nNowTime = (nNowTime-pBestBlockIndex->nPeriodStartTime())/(pBestBlockIndex->nPeriodCount()*BLOCK_GEN_TIME);
+							nNowTime *= (pBestBlockIndex->nPeriodCount()*BLOCK_GEN_TIME);
+							nNowTime += pBestBlockIndex->nPeriodStartTime();
 							nInitPeriodStartTime = nNowTime;
 						}
 						return true;
@@ -421,7 +422,7 @@ bool CCarditConsensusMeeting::hasCompleteRev()
 			{
 				//The start time of the current meeting of this block as the start time of the initialization meeting
 				//But if you take your own packaging time, you're not packing, and packing judgment is logically involved
-				nInitPeriodStartTime = pBestBlockIndex->nPeriodStartTime;
+				nInitPeriodStartTime = pBestBlockIndex->nPeriodStartTime();
 				LogPrintf("[CCarditConsensusMeeting::hasCompleteRev] 0 %d and nowtime= %d end\n",nInitPeriodStartTime,  nNowTime);
 				return true;
 			}//nowTime>The latest block Meet End Time，but nowTime< The first package time in the next round
@@ -464,7 +465,7 @@ bool CCarditConsensusMeeting::isPreMeetingLastBlock(CBlockIndex* pBlockHeader)
 		return false;
 	}
 
-	if (pBlockHeader->nTimePeriod == pBlockHeader->nPeriodCount - 1)
+	if (pBlockHeader->nTimePeriod() == pBlockHeader->nPeriodCount() - 1)
 	{
 		return true;
 	}

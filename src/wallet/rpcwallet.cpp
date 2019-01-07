@@ -717,7 +717,7 @@ UniValue unionsendtokenmany(const JSONRPCRequest& request)
     if (tokenDataMap.count(tokensymbol) == 0)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Error: Can't found 'tokensymbol' of the Token");
 
-    int tokenaccuracy = tokenDataMap[tokensymbol].accuracy;
+    int tokenaccuracy = tokenDataMap[tokensymbol].getAccuracy();
     //LogPrintf("  tokenaccuracy:%d\n",tokenaccuracy);
     std::cout<<"  tokenaccuracy:"<<tokenaccuracy<<std::endl;
     if(tokenaccuracy<0||tokenaccuracy>10)
@@ -907,7 +907,7 @@ UniValue unionverifytokenvout(const JSONRPCRequest& request)
     if (tokenDataMap.count(tokensymbol) == 0)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Error: Can't found 'tokensymbol' of the Token");
 
-    int tokenaccuracy = tokenDataMap[tokensymbol].accuracy;
+    int tokenaccuracy = tokenDataMap[tokensymbol].getAccuracy();
     if(tokenaccuracy<0||tokenaccuracy>10)
     {
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Error: Can't found 'tokenaccuracy' of the Token");
@@ -2297,6 +2297,43 @@ static void IPCTokenRegSendMoney(std::string strReglabel, const CTxDestination &
 	}
 }
 
+//Tokens Reg Transaction
+static void IPCAddTokenRegSendMoney(std::string strReglabel, const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew)
+{
+	CAmount curBalance = pwalletMain->GetBalance();
+
+	// Check amount
+	if (nValue < 0)
+		throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid amount");
+
+	if (nValue > curBalance)
+		throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
+
+	if (pwalletMain->GetBroadcastTransactions() && !g_connman)
+		throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
+	// Parse Ipchain address
+	CScript scriptPubKey = GetScriptForDestination(address);
+
+	// Create and send the transaction
+	CReserveKey reservekey(pwalletMain);
+	CAmount nFeeRequired;
+	std::string strError;
+	vector<CRecipient> vecSend;
+	int nChangePosRet = -1;
+	CRecipient recipient = { scriptPubKey, nValue, fSubtractFeeFromAmount };
+	vecSend.push_back(recipient);
+	if (!pwalletMain->CreateAddTokenRegTransactionByStrReglabel(strReglabel, vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError)) {
+		if (!fSubtractFeeFromAmount && nValue + nFeeRequired > curBalance)
+			strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
+		throw JSONRPCError(RPC_WALLET_ERROR, strError);
+	}
+	CValidationState state;
+	if (!pwalletMain->CommitTransaction(wtxNew, reservekey, g_connman.get(), state)) {
+		strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
+		throw JSONRPCError(RPC_WALLET_ERROR, strError);
+	}
+}
 
 
 UniValue ipctokenregtoaddress(const JSONRPCRequest& request)
@@ -2306,8 +2343,8 @@ UniValue ipctokenregtoaddress(const JSONRPCRequest& request)
 
 	if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
 		throw runtime_error(
-        "ipctokenregtoaddress(IPCTokenRegToAddress) \"address\"  \"icplabel\" \n"
-		"\nSend an amount to a given address.\n"
+        "ipctokenregtoaddress(IPCTokenRegToAddress) \"address\"  \"tokenlabel\" \n"
+		"\nReg token to a given address.\n"
 		+ HelpRequiringPassphrase() +
 		"\nArguments:\n"
 		"1. \"address\"            (string, required) The ipchain address to send to.\n"
@@ -2338,6 +2375,177 @@ UniValue ipctokenregtoaddress(const JSONRPCRequest& request)
 	EnsureWalletIsUnlocked();
 
 	IPCTokenRegSendMoney(strReglabel, address.Get(), nAmount, fSubtractFeeFromAmount, wtx);
+
+	return wtx.GetHash().GetHex();
+}
+
+
+UniValue ipcaddtokenregtoaddress(const JSONRPCRequest& request)
+{
+	if (!EnsureWalletIsAvailable(request.fHelp))
+		return NullUniValue;
+
+	if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
+		throw runtime_error(
+		"ipcaddtokenregtoaddress \"address\"  \"icplabel\" \n"
+		"\nSend an amount to a given address.\n"
+		+ HelpRequiringPassphrase() +
+		"\nArguments:\n"
+		"1. \"address\"            (string, required) The ipchain address to send to.\n"
+		"2. \"tokenlabel\"           (string) ipclabel...\n"
+		"\nResult:\n"
+		"\"txid\"                  (string) The transaction id.\n"
+		"\nExamples:\n"
+		+ HelpExampleCli("ipcaddtokenregtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"  \"{\"TokenSymbol\":\"flycoin\",\"totalCount\":1000,\"addmode\":0,\"hash\":\"cec3144f63c09aa6e2dc03c370f339c1\",\"label\":\"NewCoin\",\"issueDate\":1508234422,\"currentCount\":[{\"height\":\"100\",\"count\":100},{\"height\":\"100\",\"count\":100}],\"accuracy\":2,\"txLabel\":\" \"}\" ")
+
+		+ HelpExampleRpc("ipcaddtokenregtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"{\"TokenSymbol\":\"flycoin\",\"totalCount\":1000,\"addmode\":0,\"hash\":\"cec3144f63c09aa6e2dc03c370f339c1\",\"label\":\"NewCoin\",\"issueDate\":1508234422,\"currentCount\":[{\"height\":\"100\",\"count\":100},{\"height\":\"100\",\"count\":100}],\"accuracy\":2,\"txLabel\":\" \"}\"")
+		);
+
+	LOCK2(cs_main, pwalletMain->cs_wallet);
+
+	CBitcoinAddress address(request.params[0].get_str());
+	if (!address.IsValid())
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Ipchain address");
+
+	// Amount
+	CAmount nAmount = 0;
+	CWalletTx wtx;
+	std::string strReglabel = "";
+	if (request.params.size() > 1 && !request.params[1].isNull() && !request.params[1].get_str().empty())
+		strReglabel = request.params[1].get_str();
+
+	bool fSubtractFeeFromAmount = false;
+
+	EnsureWalletIsUnlocked();
+
+	IPCAddTokenRegSendMoney(strReglabel, address.Get(), nAmount, fSubtractFeeFromAmount, wtx);
+
+	return wtx.GetHash().GetHex();
+}
+
+//Tokens Reg Transaction
+static void AddTokenRegSendMoney(std::string strReglabel, const std::vector<CRecipientaddtoken>& vecsend, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew)
+{
+	CAmount curBalance = pwalletMain->GetBalance();
+
+	// Check amount
+	if (nValue < 0)
+		throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid amount");
+
+	if (nValue > curBalance)
+		throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
+
+	if (pwalletMain->GetBroadcastTransactions() && !g_connman)
+		throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
+
+	// Create and send the transaction
+	CReserveKey reservekey(pwalletMain);
+	CAmount nFeeRequired;
+	std::string strError;
+	int nChangePosRet = -1;
+
+	if (!pwalletMain->CreateAddTokenRegTransaction(strReglabel, vecsend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError)) {
+		if (!fSubtractFeeFromAmount && nValue + nFeeRequired > curBalance)
+			strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
+		throw JSONRPCError(RPC_WALLET_ERROR, strError);
+	}
+	
+	CValidationState state;
+	if (!pwalletMain->CommitTransaction(wtxNew, reservekey, g_connman.get(), state)) {
+		strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
+		throw JSONRPCError(RPC_WALLET_ERROR, strError);
+	}
+	
+}
+
+
+
+UniValue addtokenregtoaddress(const JSONRPCRequest& request)
+{
+	if (!EnsureWalletIsAvailable(request.fHelp))
+		return NullUniValue;
+
+	if (request.fHelp || request.params.size() < 3 || request.params.size() > 3)
+		throw runtime_error(
+		"addtokenregtoaddress \"address\"  \"tokenlabel\"  \"addtokenreginfo\" \n"
+		"\nReg addtoken to a given address.\n"
+		+ HelpRequiringPassphrase() +
+		"\nArguments:\n"
+		"1. \"address\"            (string, required) The ipchain address to send to.\n"
+		"2. \"tokenlabel\"           (string) tokenlabel...\n"
+		"3. \"addtokenreginfo\"           (string) (string) A json array of Register info...\n"
+		"    [\n"
+		"      {\n"
+		"      \"height\": height         (numeric) The height when the token effect \n"
+		"      \"tokenvalue\": tokennum   (numeric) Token value  \n"
+		"      \"extendinfo\": info       (string)  The extendinfo \n"
+		"      \"txlabel\": txLabel       (string)  The txLabel \n"
+		"      }/n"
+		"      ,...\n"
+		"    ]\n"
+		"\nResult:\n"
+		"\"txid\"                  (string) The transaction id.\n"
+		"\nExamples:\n"
+		+ HelpExampleCli("ipctokenregtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"  \"{\"TokenSymbol\":\"flycoin\",\"automode\":0,\"hash\":\"cec3144f63c09aa6e2dc03c370f339c1\",\"label\":\"NewCoin\",\"issueDate\":1508234422,\"totalCount\":10000000,\"accuracy\":2}\" ")
+
+		+ HelpExampleRpc("ipctokenregtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"{\"TokenSymbol\":\"flycoin\",\"automode\":0,\"hash\":\"cec3144f63c09aa6e2dc03c370f339c1\",\"label\":\"NewCoin\",\"issueDate\":1508234422,\"totalCount\":10000000,\"accuracy\":2}\"")
+		);
+
+	LOCK2(cs_main, pwalletMain->cs_wallet);
+
+	CBitcoinAddress address(request.params[0].get_str());
+	if (!address.IsValid())
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Ipchain address");
+	CScript scriptPubKey = GetScriptForDestination(address.Get());
+	// Amount
+	CAmount nAmount = 0;
+	CWalletTx wtx;
+	std::string strReglabel = "";
+	if (request.params.size() > 1 && !request.params[1].isNull() && !request.params[1].get_str().empty())
+		strReglabel = request.params[1].get_str();
+
+	UniValue reginfos = request.params[2].get_array();
+	vector<CRecipientaddtoken> vecSend;
+	vecSend.clear();
+	for (unsigned int idx = 0; idx < reginfos.size(); idx++)
+	{
+		const UniValue& input = reginfos[idx];
+		const UniValue& o = input.get_obj();
+		std::vector<std::string> inkeys;
+		inkeys = o.getKeys();
+		if (find_value(o, "height").isNull() || find_value(o, "tokenvalue").isNull() )
+			throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, missing keys");
+
+		const UniValue& height_v = find_value(o, "height");
+		uint32_t nheight = height_v.get_int64();
+		if (nheight < chainActive.Height())
+			throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, nheight can't smaller than chainActive.");
+		const UniValue& tokenvalue_v = find_value(o, "tokenvalue");
+		uint64_t ntokenvalue = tokenvalue_v.get_int64();
+		if (ntokenvalue < 0)
+			throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, tokenvalue error.");
+		std::string  strextendinfo = "";
+		if (!find_value(o, "extendinfo").isNull())
+		{
+			const UniValue& extendinfo_v = find_value(o,"extendinfo");
+			strextendinfo = extendinfo_v.get_str();
+		}
+		std::string  strtxlabel = "";
+		if (!find_value(o, "txlabel").isNull())
+		{
+			const UniValue& txlabel_v = find_value(o, "txlabel");
+			strtxlabel = txlabel_v.get_str();
+		}
+		CRecipientaddtoken recipient = { scriptPubKey,nheight, ntokenvalue, strextendinfo, strtxlabel };
+		vecSend.push_back(recipient);
+	}
+
+	bool fSubtractFeeFromAmount = false;
+
+	EnsureWalletIsUnlocked();
+
+	AddTokenRegSendMoney(strReglabel,vecSend ,nAmount, fSubtractFeeFromAmount, wtx);
 
 	return wtx.GetHash().GetHex();
 }
@@ -2446,7 +2654,7 @@ UniValue ipctokensendtoaddress(const JSONRPCRequest& request)
 	if (!address.IsValid())
 		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Ipchain address");
 
-	int nacc = (int)tokenDataMap[tokensymbol].accuracy;
+	int nacc = (int)tokenDataMap[tokensymbol].getAccuracy();
 	int64_t TokenValue = TCoinsFromValue(request.params[2], nacc);
 	if (TokenValue <= 0)
 		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Tokentransaction value");
@@ -2494,7 +2702,7 @@ UniValue ipctokensendtoaddressforcross(const JSONRPCRequest& request)
 	if (!address.IsValid())
 		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Ipchain address");
 
-	int nacc = (int)tokenDataMap[tokensymbol].accuracy;
+	int nacc = (int)tokenDataMap[tokensymbol].getAccuracy();
 	int64_t TokenValue = TCoinsFromValue(request.params[2], nacc);
 	if (TokenValue <= 0)
 		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Tokentransaction value");
@@ -3204,7 +3412,7 @@ UniValue sendtokenmany(const JSONRPCRequest& request)
 	if (tokenDataMap.count(tokensymbol) == 0)
 		throw JSONRPCError(RPC_INVALID_PARAMETER, "Error: Can't found 'accuracy' of the Token");
 
-	int tokenaccuracy = tokenDataMap[tokensymbol].accuracy;
+	int tokenaccuracy = tokenDataMap[tokensymbol].getAccuracy();
 	//std::cout << "tokenaccuracy =  " << tokenaccuracy  << std::endl;
 	UniValue sendTo = request.params[2].get_obj();
 	
@@ -3563,7 +3771,7 @@ UniValue getuniontokenbalance(const JSONRPCRequest& request)
     }
     uint64_t balance = 0;
     pwalletMain->GetSymbolbalance(tokensymbol,balance,strAddress);
-    return ValueFromTCoinsN(balance, (int)tokenDataMap[tokensymbol].accuracy);
+	return ValueFromTCoinsN(balance, (int)tokenDataMap[tokensymbol].getAccuracy());
 }
 UniValue getunioncoins(const JSONRPCRequest& request)
 {
@@ -6412,7 +6620,7 @@ UniValue listtokencoins(const JSONRPCRequest& request)
 		throw JSONRPCError(RPC_DATABASE_ERROR, string("Can't find the balance of the tokensymbol!"));
 	UniValue results(UniValue::VOBJ);
 	results.push_back(Pair("Tokensymbol", tokensymbol));
-	results.push_back(Pair("balance", ValueFromTCoinsN(balance, (int)tokenDataMap[tokensymbol].accuracy)));
+	results.push_back(Pair("balance", ValueFromTCoinsN(balance, (int)tokenDataMap[tokensymbol].getAccuracy())));
 
 	return results;
 }
@@ -6439,7 +6647,7 @@ UniValue gettokenbalance(const JSONRPCRequest& request)
 	if (!getbalanceYet)
 		throw JSONRPCError(RPC_DATABASE_ERROR, string("Can't find the balance of the tokensymbol!"));
 
-	return ValueFromTCoinsN(balance, (int)tokenDataMap[tokensymbol].accuracy);
+	return ValueFromTCoinsN(balance, (int)tokenDataMap[tokensymbol].getAccuracy());
 }
 
 UniValue listunspenttoken(const JSONRPCRequest& request)
@@ -7337,6 +7545,8 @@ static const CRPCCommand commands[] =
     { "wallet", "ipcauthortoaddresswithtxlabel", &ipcauthortoaddresswithtxlabel, false, { "txid", "index", "address", "ipclabel" } },
     { "hide",				"IPCTokenRegToAddress",		&ipctokenregtoaddress,		false, { "address", "tokenlabel" } },
     { "wallet",				"ipctokenregtoaddress",		&ipctokenregtoaddress,		false, { "address", "tokenlabel" } },
+	{ "wallet", "ipcaddtokenregtoaddress", &ipcaddtokenregtoaddress, false, { "address", "tokenlabel" } },
+	{ "wallet", "addtokenregtoaddress", &addtokenregtoaddress, false, { "address", "tokenlabel" ,"addtokenreginfo"} },
     { "hide",				"IPCTokenSendToAddress",	&ipctokensendtoaddress,		false, { "tokensymbol", "address",  "value" } },
     { "wallet",				"ipctokensendtoaddress",	&ipctokensendtoaddress,		false, { "tokensymbol", "address",  "value" } },
     { "hide",				"listunspentNormal",		&listunspentnormal,			false, { "minconf", "maxconf", "addresses", "include_unsafe" } },

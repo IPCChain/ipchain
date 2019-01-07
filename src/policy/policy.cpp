@@ -209,7 +209,7 @@ bool IsValidIPCModelCheck(const CTransaction& tx, std::map<uint128, IPCLabel>& I
 				return state.DoS(100, false, REJECT_INVALID, "bad-IPC-reAuthor-with-ownership-output");
 	
 			bool losted = true;
-			bool changed = true;
+		
 			if (ipcInAuthorIteator->second.second.uniqueAuthorize == 0)	//the authorization for non-exclusive authorization is compared to OutAuthorRecord.
 			{
 				ipcOutNormalAuthorIteator = OutAuthorRecord.lower_bound(ipcInAuthorIteator->first);
@@ -380,6 +380,82 @@ bool IsValidTokenModelCheck(std::map<std::string, uint64_t>& tokenInRegRecord, s
 	}
 	return true;
 }
+bool addTokenClassCompare(const AddTokenLabel& token1, const AddTokenLabel& token2){
+	if (token1.version != token2.version ||
+		token1.addmode != token2.addmode ||
+		token1.TokenSymbol != token2.TokenSymbol ||
+		token1.hash != token2.hash ||
+		token1.totalCount != token2.totalCount ||
+		token1.accuracy != token2.accuracy ||
+		token1.TokenSymbol != token2.TokenSymbol
+		)
+		return false;
+	for (int i = 0; i < 9;i++)
+	{
+		if (token1.TokenSymbol[i] != token2.TokenSymbol[i])
+		{
+			return false;
+		}
+	}
+	for (int i = 0; i < 17; i++)
+	{
+		if (token1.label[i] != token2.label[i])
+		{
+			return false;
+		}
+	}
+	return true;
+}
+bool manualIssuancStandard(const CTxOut& txout, CValidationState &state,
+	uint64_t& currentTotalAmount, std::map<std::string, TokenReg>&tokenDataMaptemp,
+	std::string txid,int32_t voutIndex){
+	auto itor = tokenDataMaptemp.find(txout.addTokenLabel.getTokenSymbol());
+	if (itor != tokenDataMaptemp.end()){
+		if (itor->second.m_tokentype == 4){
+			return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokenDataMap-repeat");
+		}
+		else if (itor->second.m_tokentype == TXOUT_ADDTOKEN){
+			if (itor->second.m_addTokenLabel.size() > 0){
+				AddTokenReg &addTokenLabel0 = itor->second.m_addTokenLabel[0];
+				if (!addTokenClassCompare(addTokenLabel0.m_addTokenLabel, txout.addTokenLabel)){
+					return state.DoS(100, false, REJECT_INVALID, "bad-Token-addTokenClassCompare");
+				}
+				if (addTokenLabel0.m_txid == txid &&addTokenLabel0.m_vout == voutIndex){
+					return state.DoS(100, false, REJECT_INVALID, "bad-Token-txvout-repeat");
+				}
+				CScript script = txout.scriptPubKey;
+				txnouttype typeRet;
+				std::vector<CTxDestination> prevdestes;
+				int nRequiredRet;
+				std::string address;
+				bool fValidAddress = ExtractDestinations(script, typeRet, prevdestes, nRequiredRet);
+				if (fValidAddress){
+					BOOST_FOREACH(CTxDestination &prevdest, prevdestes){
+						CBitcoinAddress add(prevdest);
+						address = CBitcoinAddress(prevdest).ToString();
+						break;
+					}
+				}
+				if (!fValidAddress || address.empty())
+					return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokenregaddress-empty");
+				if (addTokenLabel0.address != address){
+					return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokenregaddress-notsame");
+				}
+				auto temp=itor->second.m_addTokenLabel.begin();
+				while (temp != itor->second.m_addTokenLabel.end())
+				{
+					currentTotalAmount += temp->m_addTokenLabel.currentCount;
+					temp++;
+				}
+			}
+			else
+				return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokenDataMap-error");
+		}
+		else
+			return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokenDataMap-tokentype");
+	}
+	return true;
+}
 
 bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 {
@@ -443,6 +519,8 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 			prev = prevv;
 			if (prev.txType == TXOUT_TOKENREG)//Tokens to register
 				fatheruraccy = prev.tokenRegLabel.accuracy;
+			else if (prev.txType == TXOUT_ADDTOKEN)//Tokens to register
+				fatheruraccy = prev.addTokenLabel.accuracy;
 
 			totalvintvalues += prev.nValue;
 		}
@@ -459,6 +537,8 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 			prev = prevv;
 			if (prev.txType == TXOUT_TOKENREG)//Tokens to register
 				fatheruraccy = prev.tokenRegLabel.accuracy;
+			else if (prev.txType == TXOUT_ADDTOKEN)//Tokens to register
+				fatheruraccy = prev.addTokenLabel.accuracy;
 
 			totalvintvalues += prev.nValue;
 		}
@@ -558,7 +638,7 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 			if (prev.tokenRegLabel.issueDate != 0 && prev.tokenRegLabel.issueDate > chainActive.Tip()->GetBlockTime())
 				return state.DoS(100, false, REJECT_INVALID, "Token-reg-starttime-is-up-yet");
 			
-			if (prev.tokenRegLabel.accuracy != tokenDataMap[prev.tokenRegLabel.getTokenSymbol()].accuracy && fatheruraccy != prev.tokenRegLabel.accuracy)
+			if (prev.tokenRegLabel.accuracy != tokenDataMap[prev.tokenRegLabel.getTokenSymbol()].getAccuracy() && fatheruraccy != prev.tokenRegLabel.accuracy)
 			{
 				return state.DoS(100, false, REJECT_INVALID, "Vin-Token-accuracy-error");
 			}
@@ -572,7 +652,7 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 			if (prev.nValue != 0)
 				return state.DoS(100, false, REJECT_INVALID, "Vin5-IPC-nValue-must-be-zero");
 			
-			if (prev.tokenLabel.accuracy != tokenDataMap[prev.tokenLabel.getTokenSymbol()].accuracy)
+			if (prev.tokenLabel.accuracy != tokenDataMap[prev.tokenLabel.getTokenSymbol()].getAccuracy())
 				return state.DoS(100, false, REJECT_INVALID, "Vin-Token-accuracy-error");
 			
 			if (tokenInRecord.count(prev.tokenLabel.getTokenSymbol()) > 0)
@@ -589,7 +669,25 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 
 			tokeninCount++;
 			break;			
-				
+		case TXOUT_ADDTOKEN:
+
+			if (prev.nValue != 0)
+				return state.DoS(100, false, REJECT_INVALID, "Vin4-IPC-nValue-must-be-zero");
+
+		//	if (tokenInRegRecord.count(prev.addTokenLabel.getTokenSymbol()) > 0)
+		//		return state.DoS(100, false, REJECT_INVALID, "bad-Token-Symbol-repeat");
+
+			if (prev.addTokenLabel.issueDate != 0 && prev.addTokenLabel.issueDate > chainActive.Tip()->GetBlockTime())
+				return state.DoS(100, false, REJECT_INVALID, "Token-reg-starttime-is-up-yet");
+
+			if (prev.addTokenLabel.accuracy != tokenDataMap[prev.addTokenLabel.getTokenSymbol()].getAccuracy() && fatheruraccy != prev.addTokenLabel.accuracy)
+			{
+				return state.DoS(100, false, REJECT_INVALID, "Vin-Token-accuracy-error");
+			}
+
+			tokenInRegRecord[prev.addTokenLabel.getTokenSymbol()] = prev.addTokenLabel.totalCount;
+			tokeninCount++;
+			break;
 		default:
 			continue;
 			break;
@@ -620,18 +718,20 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 	int IPCoutCount = 0;
 	int devoteoutCount = 0;
 	int tokenoutCount = 0;
-	
+	uint64_t addtotalcount = 0;
+	uint64_t verifytotalcount = 0;
+	int addtokenmodel = -1;
 	std::vector<CTxDestination> prevdestes;
 	std::string curaddress;
 	CAmount totalvoutvalues = 0;
-	BOOST_FOREACH(const CTxOut& txout, tx.vout) {
-	
+	for (uint32_t voutIndex = 0; voutIndex < tx.vout.size(); voutIndex++) {
+		const CTxOut& txout = tx.vout[voutIndex];
 		if (txout.txLabelLen > TXLABLE_MAX_LENGTH - 1)  //More than 511, txLabelLen shows the incorrect length.
 			return state.DoS(100, false, REJECT_INVALID, "Vout-txLabelLen-erro");
 		if (txout.txLabel.size() != txout.txLabelLen)  
 			return state.DoS(100, false, REJECT_INVALID, "Vout-txLabel-length-not-feet-txLabelLen");
 		totalvoutvalues += txout.nValue;
-		bool systenaddressfounded = false;
+	
 		switch (txout.txType)
 		{
 		case 1:
@@ -658,7 +758,7 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 					//Restore CTXDestination from the prevout script
 					if (!ExtractDestinations(prev.scriptPubKey, type, prevdestes, nRequired))
 						return state.DoS(100, false, REJECT_INVALID, "exit-campaign-prevout-Unextracted,type=" + type);
-					
+
 					BOOST_FOREACH(CTxDestination &prevdest, prevdestes){
 						if (curaddress == CBitcoinAddress(prevdest).ToString())
 						{
@@ -671,7 +771,7 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 						return state.DoS(100, false, REJECT_INVALID, "bad-exit-campaign-devotepubkey-address");
 					}
 				}
-				
+
 
 			}
 			else if (txout.devoteLabel.ExtendType != TYPE_CONSENSUS_REGISTER && txout.devoteLabel.ExtendType != TYPE_CONSENSUS_SEVERE_PUNISHMENT_REQUEST)
@@ -685,79 +785,79 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 				return state.DoS(100, false, REJECT_INVALID, "Vout2-IPC-nValue-must-be-zero");
 			if (txout.labelLen > 255)
 				return state.DoS(100, false, REJECT_INVALID, "Vout2-IPCLabel-length-out-of-bounds");
-			
+
 			if (txout.ipcLabel.size() != txout.labelLen)
 				return state.DoS(100, false, REJECT_INVALID, "Vout2-IPCLabel-length-not-feet-labelLen");
-			
+
 			if (txout.ipcLabel.hash.GetHex().length() != 32)
 				return state.DoS(100, false, REJECT_INVALID, "Vout2-IPCHash-length-must-be-32");
-			
+
 			if (ipcOutOwnerRecord.count(txout.ipcLabel.hash) > 0)
 				return state.DoS(100, false, REJECT_INVALID, "multi-IPC-ownership-output");
-			
+
 			if (txout.ipcLabel.hash.IsNull())
 				return state.DoS(100, false, REJECT_INVALID, "IPC-ownership-hash-can't-be-NULL");
-			if (txout.ipcLabel.stopTime!=0 && txout.ipcLabel.startTime>=txout.ipcLabel.stopTime)
+			if (txout.ipcLabel.stopTime != 0 && txout.ipcLabel.startTime >= txout.ipcLabel.stopTime)
 				return state.DoS(100, false, REJECT_INVALID, "IPC-ownership-starttime-can't-larger-than-stoptime");
-			
-			if ((txout.ipcLabel.reAuthorize != 0 && txout.ipcLabel.reAuthorize !=1 )||
+
+			if ((txout.ipcLabel.reAuthorize != 0 && txout.ipcLabel.reAuthorize != 1) ||
 				(txout.ipcLabel.uniqueAuthorize != 0 && txout.ipcLabel.uniqueAuthorize != 1))
 				return state.DoS(100, false, REJECT_INVALID, "IPCLabel-reAuthorize-or-uniqueAuthorize-out-of-bounds");
-			
-			if (ipcInOwnerRecord.count(txout.ipcLabel.hash) > 0) 
+
+			if (ipcInOwnerRecord.count(txout.ipcLabel.hash) > 0)
 			{
 				if (ipcInOwnerRecord[txout.ipcLabel.hash].hash != txout.ipcLabel.hash ||
 					ipcInOwnerRecord[txout.ipcLabel.hash].ExtendType != txout.ipcLabel.ExtendType ||
 					ipcInOwnerRecord[txout.ipcLabel.hash].labelTitle != txout.ipcLabel.labelTitle)
 					return state.DoS(100, false, REJECT_INVALID, "bad-IPC-send-or-rethorize-output(hash/ExtendType/labelTitle)");
 
-				
-				if (ipcInOwnerRecord[txout.ipcLabel.hash].reAuthorize != txout.ipcLabel.reAuthorize )
+
+				if (ipcInOwnerRecord[txout.ipcLabel.hash].reAuthorize != txout.ipcLabel.reAuthorize)
 					return state.DoS(100, false, REJECT_INVALID, "bad-IPC-send-or-rethorize-output(reAuthorize)");
-				
+
 			}
 			ipcOutOwnerRecord[txout.ipcLabel.hash] = txout.ipcLabel;
 			IPCoutCount++;
 			break;
 
 		case 3:
-			
+
 			if (txout.nValue != 0)
 				return state.DoS(100, false, REJECT_INVALID, "Vout3-IPC-nValue-must-be-zero");
 			if (txout.labelLen > 255)
 				return state.DoS(100, false, REJECT_INVALID, "Vout3-IPCLabel-length-out-of-bounds");
-		
+
 			if (txout.ipcLabel.size() != txout.labelLen)
 				return state.DoS(100, false, REJECT_INVALID, "Vout3-IPCLabel-length-not-feet-labelLen");
-			
+
 			if (txout.ipcLabel.hash.GetHex().length() != 32)
 				return state.DoS(100, false, REJECT_INVALID, "Vout3-IPCHash-length-must-be-32");
-			
+
 			if (txout.ipcLabel.startTime == 0 || txout.ipcLabel.stopTime == 0)
 				return state.DoS(100, false, REJECT_INVALID, "bad-IPC-author-time");
-		
-			
+
+
 			if ((txout.ipcLabel.reAuthorize != 0 && txout.ipcLabel.reAuthorize != 1) ||
 				(txout.ipcLabel.uniqueAuthorize != 0 && txout.ipcLabel.uniqueAuthorize != 1))
 				return state.DoS(100, false, REJECT_INVALID, "IPCLabel-reAuthorize-or-uniqueAuthorize-out-of-bounds");
-			
-			if (ipcInOwnerRecord.count(txout.ipcLabel.hash) > 0) 
+
+			if (ipcInOwnerRecord.count(txout.ipcLabel.hash) > 0)
 			{
 				if (ipcInOwnerRecord[txout.ipcLabel.hash].hash != txout.ipcLabel.hash ||
 					ipcInOwnerRecord[txout.ipcLabel.hash].ExtendType != txout.ipcLabel.ExtendType ||
 					ipcInOwnerRecord[txout.ipcLabel.hash].labelTitle != txout.ipcLabel.labelTitle)
 					return state.DoS(100, false, REJECT_INVALID, "bad-IPC-Authorize-output(hash/ExtendType/labelTitle)");
 			}
-	
-			
-			if (txout.ipcLabel.uniqueAuthorize == 1) 
+
+
+			if (txout.ipcLabel.uniqueAuthorize == 1)
 			{
 				//moddify by xxy 20171216  Exclusive license notes
-// 				//There can only be one exclusive authorized output in the same transaction
-// 				if (ipcOutUniqueRecord.count(txout.ipcLabel.hash) > 0)
-// 					return state.DoS(100, false, REJECT_INVALID, "bad-IPC-multi-uniqueAuthor-output");
-// 
-// 				ipcOutUniqueRecord[txout.ipcLabel.hash] = txout.ipcLabel;
+				// 				//There can only be one exclusive authorized output in the same transaction
+				// 				if (ipcOutUniqueRecord.count(txout.ipcLabel.hash) > 0)
+				// 					return state.DoS(100, false, REJECT_INVALID, "bad-IPC-multi-uniqueAuthor-output");
+				// 
+				// 				ipcOutUniqueRecord[txout.ipcLabel.hash] = txout.ipcLabel;
 				//end moddify
 			}
 			else
@@ -767,42 +867,42 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 			break;
 
 		case 4:
-			
+
 			if (txout.nValue != 0)
 				return state.DoS(100, false, REJECT_INVALID, "Vout4-Token-nValue-must-be-zero");
-			
+
 			checkStr = txout.tokenRegLabel.getTokenSymbol();
 			boost::to_upper(checkStr);
 			if (checkStr.find("IPC") != std::string::npos || checkStr.find("RMB") != std::string::npos
-				|| checkStr.find("USD") != std::string::npos || checkStr.find("EUR") != std::string::npos )
+				|| checkStr.find("USD") != std::string::npos || checkStr.find("EUR") != std::string::npos)
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Symbol-contain-errvalue");
 			checkStr = txout.tokenRegLabel.getTokenLabel();
 			boost::to_upper(checkStr);
 			if (checkStr.find("IPC") != std::string::npos || checkStr.find("RMB") != std::string::npos
 				|| checkStr.find("USD") != std::string::npos || checkStr.find("EUR") != std::string::npos)
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Label-contain-errvalue");
-			
+
 			if (txout.tokenRegLabel.hash.GetHex().length() != 32)
 				return state.DoS(100, false, REJECT_INVALID, "Vout4-Hash-length-must-be-32");
-			
+
 			if (txout.tokenRegLabel.issueDate < TOKEN_REGTIME_BOUNDARY)
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Reg-issueDate(Regtime)");
-			
+
 			if (txout.tokenRegLabel.accuracy < 0 || txout.tokenRegLabel.accuracy > 8)
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Reg-accuracy(must be 0-8)");
-			
+
 			if (txout.tokenRegLabel.totalCount > TOKEN_MAX_VALUE)
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Reg-totalCount");
 
 			if (pIPCCheckMaps->TokenSymbolMap.count(txout.tokenRegLabel.getTokenSymbol()) > 0 &&
 				pIPCCheckMaps->TokenSymbolMap[txout.tokenRegLabel.getTokenSymbol()].first != tx.GetHash())
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokensymbol-repeat");
-			
+
 			if (pIPCCheckMaps->TokenHashMap.count(txout.tokenRegLabel.hash) > 0 &&
 				pIPCCheckMaps->TokenHashMap[txout.tokenRegLabel.hash].first != tx.GetHash())
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokenhash-repeat");
 
-			
+
 			if (tokenOutRegRecord.count(txout.tokenRegLabel.getTokenSymbol()) > 0)
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokensymbol-repeat");
 
@@ -812,23 +912,23 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 			break;
 
 		case 5:
-			
+
 			if (txout.nValue != 0)
 				return state.DoS(100, false, REJECT_INVALID, "Vout5-Token-nValue-must-be-zero");
-			
+
 			if (txout.tokenLabel.accuracy < 0 || txout.tokenLabel.accuracy > 8)
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-accuracy(must be 0-8)");
-			
-			if (txout.tokenLabel.accuracy != tokenDataMap[txout.tokenLabel.getTokenSymbol()].accuracy && fatheruraccy != txout.tokenLabel.accuracy)
+
+			if (txout.tokenLabel.accuracy != tokenDataMap[txout.tokenLabel.getTokenSymbol()].getAccuracy() && fatheruraccy != txout.tokenLabel.accuracy)
 				return state.DoS(100, false, REJECT_INVALID, "Vout-Token-accuracy-error");
-			
+
 			checkStr = txout.tokenLabel.getTokenSymbol();
 			boost::to_upper(checkStr);
 			if (checkStr.find("IPC") != std::string::npos)
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Symbol-contain-errvalue");
-	
-			if ( (Params().NetworkIDString() == CBaseChainParams::MAIN) || 
-				((Params().NetworkIDString() == CBaseChainParams::TESTNET) &&((int)chainActive.Height()>788900)))
+
+			if ((Params().NetworkIDString() == CBaseChainParams::MAIN) ||
+				((Params().NetworkIDString() == CBaseChainParams::TESTNET) && ((int)chainActive.Height() > 788900)))
 			{
 				if (tokenInRecord.count(txout.tokenLabel.getTokenSymbol()) > 0){
 					if (txout.tokenLabel.value > tokenInRecord[txout.tokenLabel.getTokenSymbol()])
@@ -839,9 +939,9 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 					if (txout.tokenLabel.value > tokenInRegRecord[txout.tokenLabel.getTokenSymbol()])
 						return state.DoS(100, false, REJECT_INVALID, "bad-Token-value-errvalue");
 				}
-				 
+
 			}
-			
+
 			if (tokenOutRecord.count(txout.tokenLabel.getTokenSymbol()) > 0)
 			{
 				tokenTxOutputTotalValue = tokenOutRecord[txout.tokenLabel.getTokenSymbol()];
@@ -853,6 +953,85 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 
 			tokenoutCount++;
 			break;
+		case TXOUT_ADDTOKEN:
+
+			if (txout.nValue != 0)
+				return state.DoS(100, false, REJECT_INVALID, "Vout4-Token-nValue-must-be-zero");
+
+			checkStr = txout.addTokenLabel.getTokenSymbol();
+			boost::to_upper(checkStr);
+			if (checkStr.find("IPC") != std::string::npos || checkStr.find("RMB") != std::string::npos
+				|| checkStr.find("USD") != std::string::npos || checkStr.find("EUR") != std::string::npos)
+				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Symbol-contain-errvalue");
+			checkStr = txout.addTokenLabel.getTokenLabel();
+			boost::to_upper(checkStr);
+			if (checkStr.find("IPC") != std::string::npos || checkStr.find("RMB") != std::string::npos
+				|| checkStr.find("USD") != std::string::npos || checkStr.find("EUR") != std::string::npos)
+				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Label-contain-errvalue");
+
+			if (txout.addTokenLabel.hash.GetHex().length() != 32)
+				return state.DoS(100, false, REJECT_INVALID, "Vout4-Hash-length-must-be-32");
+
+			if (txout.addTokenLabel.issueDate < TOKEN_REGTIME_BOUNDARY)
+				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Reg-issueDate(Regtime)");
+
+			if (txout.addTokenLabel.accuracy < 0 || txout.addTokenLabel.accuracy > 8)
+				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Reg-accuracy(must be 0-8)");
+
+			if (txout.addTokenLabel.totalCount > TOKEN_MAX_VALUE ||
+				txout.addTokenLabel.totalCount <= 0)
+				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Reg-totalCount");
+			if (addtotalcount == 0){
+				addtotalcount = txout.addTokenLabel.totalCount;
+				verifytotalcount = addtotalcount;
+			}
+			else if (addtotalcount != txout.addTokenLabel.totalCount)
+				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Reg-totalCount");
+
+			if (addtokenmodel == -1){
+				addtokenmodel = (int)txout.addTokenLabel.addmode;
+			}
+			else if (addtokenmodel != (int)txout.addTokenLabel.addmode){
+				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Reg-addmode");
+			}
+			if (addtokenmodel != 1 && addtokenmodel != 0){
+				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Reg-addmode");
+			}
+			if (txout.addTokenLabel.currentCount > TOKEN_MAX_VALUE ||
+				txout.addTokenLabel.currentCount <= 0 ||
+				txout.addTokenLabel.currentCount > txout.addTokenLabel.totalCount)
+				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Reg-currentCount");
+	
+			verifytotalcount -= txout.addTokenLabel.currentCount;
+
+			if (pIPCCheckMaps->TokenSymbolMap.count(txout.addTokenLabel.getTokenSymbol()) > 0 &&
+				pIPCCheckMaps->TokenSymbolMap[txout.addTokenLabel.getTokenSymbol()].first != tx.GetHash() &&
+				(0==(int)txout.addTokenLabel.addmode))
+		     	return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokensymbol-repeat");
+
+			if (pIPCCheckMaps->TokenHashMap.count(txout.addTokenLabel.hash) > 0 &&
+				pIPCCheckMaps->TokenHashMap[txout.addTokenLabel.hash].first != tx.GetHash()){
+				if (txout.addTokenLabel.addmode == 0){
+					return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokenhash-repeat");
+				}
+				else{
+					uint64_t currentTotalAmount = 0;
+					if (!manualIssuancStandard(txout, state, currentTotalAmount, tokenDataMap, tx.GetHash().ToString(), voutIndex) ||
+						!manualIssuancStandard(txout, state, currentTotalAmount, newTokenDataMap, tx.GetHash().ToString(), voutIndex)){
+						return false;
+					}
+					if (txout.addTokenLabel.currentCount > txout.addTokenLabel.totalCount - currentTotalAmount)
+						return state.DoS(100, false, REJECT_INVALID, "bad-Token-currentCount-beyond");
+				}
+			}
+				
+			if (addtokenmodel==1&&tokenOutRegRecord.count(txout.addTokenLabel.getTokenSymbol()) > 0)
+			  	return state.DoS(100, false, REJECT_INVALID, "bad-Token-manualIssuanc-repeat");
+			if (tokenOutRegRecord.count(txout.addTokenLabel.getTokenSymbol()) == 0)
+			    tokenOutRegRecord[txout.addTokenLabel.getTokenSymbol()] = txout.addTokenLabel.totalCount;
+
+			tokenoutCount++;
+			break;
 
 		case 0:
 			continue;
@@ -861,7 +1040,8 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 			return state.DoS(100, false, REJECT_INVALID, "can't-support-output-Type");
 		}
 	}
-
+	if (verifytotalcount != 0 && addtokenmodel == 0)
+		return state.DoS(100, false, REJECT_INVALID, "bad-Token-Reg-totalCount");
 	//Joint constraint. The same transaction cannot have any other two model outputs other than ordinary transactions.
 	if ( (IPCoutCount > 0 && tokenoutCount > 0) ||
 		(IPCoutCount > 0 && devoteoutCount > 0) ||

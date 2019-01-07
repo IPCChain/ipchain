@@ -39,6 +39,10 @@ const char *SENDCMPCT="sendcmpct";
 const char *CMPCTBLOCK="cmpctblock";
 const char *GETBLOCKTXN="getblocktxn";
 const char *BLOCKTXN="blocktxn";
+const char *VOTE="vote_message";
+const char *PUT_BLOCK="put_block";
+const char *PUT_VOTE="put_vote";
+//const char *BROADCAST_VOTE="111_vote";
 };
 
 /** All known message types. Keep this in the same order as the list of

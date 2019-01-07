@@ -51,6 +51,9 @@ public:
 	
 public:
 	uint160 myHash160;
+
+	static std::set <uint160> g_Account;
+
 private:
 	int compare(std::shared_ptr<CConsensusAccount> &a1, std::shared_ptr<CConsensusAccount> &a2);
 	uint256 getNewHash(const int64_t nTime, std::shared_ptr<CConsensusAccount> &account);

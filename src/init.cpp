@@ -72,6 +72,7 @@
 #include "zmq/zmqnotificationinterface.h"
 #endif
 #include <thread>
+extern CDBWrapper *g_pDBVote;
 
 bool fFeeEstimatesInitialized = false;
 static const bool DEFAULT_PROXYRANDOMIZE = true;
@@ -298,10 +299,12 @@ void Shutdown()
     LogPrintf("Shutdown(): before ECC_Stop();\n");
     ECC_Stop();
 	timeService.stop();
+	g_pDBVote->Sync ();
+	delete g_pDBVote;
+	g_pDBVote = nullptr;
     LogPrintf("%s: done\n", __func__);
 
 	th1_stop = true;
-	//th1->join(); //等待th1执行完
 	delete th1;
 	CBlockIndex::UnInitCBlockIndexGlobal (); //mgwang
 
@@ -1225,6 +1228,14 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
         // Detailed error printed inside LockDataDirectory
         return false;
     }
+
+	 if( !boost::filesystem::exists(GetDataDir() / "block" / "Vote"))
+	 {
+		boost::filesystem::create_directories (GetDataDir() / "block" / "Vote");
+	 }
+
+	 g_pDBVote = new CDBWrapper (GetDataDir() / "block" / "Vote", 1024);
+
 
 #ifndef WIN32
     CreatePidFile(GetPidFile(), getpid());

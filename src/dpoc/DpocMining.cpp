@@ -51,7 +51,14 @@ int CDpocMining::getCurrentConsensusInfo(int64_t nPeriodStartTime, int32_t nTime
 {
 	return pConsensusMeeting->getCurrentConsensusInfo(nPeriodStartTime, nTimePeriod,myHash160);
 }
-int CDpocMining::getLast1RoundMeetingInfo(int64_t curPeriodStartTime,   int64_t& nPeriodStartTime , int32_t& nPeriodCount)
+
+void CDpocMining::getAccount160Hash (uint160& hash)
+{
+	pConsensusMeeting->GetLocalAccountHash160 (hash);
+}
+
+int CDpocMining::getLast1RoundMeetingInfo(int64_t curPeriodStartTime,   int64_t& nPeriodStartTime , 
+														int32_t& nPeriodCount)
 {
 	return pConsensusMeeting->getLast1RoundMeetingInfo(curPeriodStartTime,   nPeriodStartTime , nPeriodCount);
 }

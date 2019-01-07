@@ -110,7 +110,7 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
 					case 4:
 						{
 							  in.push_back(Pair("tokensymbol", prev.tokenRegLabel.getTokenSymbol()));
-							  UniValue tt = ValueFromTCoins(prev.tokenRegLabel.totalCount, (int)tokenDataMap[prev.tokenRegLabel.getTokenSymbol()].accuracy).get_str();
+							  UniValue tt = ValueFromTCoins(prev.tokenRegLabel.totalCount, (int)tokenDataMap[prev.tokenRegLabel.getTokenSymbol()].getAccuracy()).get_str();
 							  std::string strvalue = tt.get_str();
 							  in.push_back(Pair("tokenvalue", strvalue));
 							  in.push_back(Pair("accuracy", prev.tokenRegLabel.accuracy));
@@ -119,11 +119,22 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
 					case 5:
 						{
 							  in.push_back(Pair("tokensymbol", prev.tokenLabel.getTokenSymbol()));
-							  UniValue tt = ValueFromTCoins(prev.tokenLabel.value, (int)tokenDataMap[prev.tokenLabel.getTokenSymbol()].accuracy);
+							  UniValue tt = ValueFromTCoins(prev.tokenLabel.value, (int)tokenDataMap[prev.tokenLabel.getTokenSymbol()].getAccuracy());
 							  std::string strvalue = tt.get_str();
 							  in.push_back(Pair("tokenvalue", strvalue));
-							  in.push_back(Pair("accuracy", prev.tokenLabel.accuracy));	 
+							  in.push_back(Pair("accuracy", prev.tokenLabel.accuracy));
 						}
+						break;
+					case TXOUT_ADDTOKEN:
+					{
+							in.push_back(Pair("tokensymbol", prev.addTokenLabel.getTokenSymbol()));
+							UniValue totalCount = ValueFromTCoins(prev.addTokenLabel.totalCount, (int)(tokenDataMap[prev.addTokenLabel.getTokenSymbol()].getAccuracy()));
+							UniValue currentCount = ValueFromTCoins(prev.addTokenLabel.currentCount, (int)(tokenDataMap[prev.addTokenLabel.getTokenSymbol()].getAccuracy()));
+							in.push_back(Pair("automode", prev.addTokenLabel.addmode));
+							in.push_back(Pair("height", prev.addTokenLabel.height));
+							in.push_back(Pair("totalCount", totalCount.get_str()));
+							in.push_back(Pair("currentCount", currentCount.get_str()));
+					}
 						break;
 					default:
 						break;
@@ -179,7 +190,7 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
 				  }
 				  else
 				  {
-					  tt = ValueFromTCoins(txout.tokenRegLabel.totalCount, (int)tokenDataMap[txout.tokenRegLabel.getTokenSymbol()].accuracy).get_str();
+					  tt = ValueFromTCoins(txout.tokenRegLabel.totalCount, (int)(tokenDataMap[txout.tokenRegLabel.getTokenSymbol()].getAccuracy()));
 				  }
 				  std::string strvalue = tt.get_str();
 				  out.push_back(Pair("TokenTotalCount", strvalue));
@@ -200,7 +211,7 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
 				  }
 				  else
 				  {
-					  tt = ValueFromTCoins(txout.tokenLabel.value, (int)tokenDataMap[txout.tokenLabel.getTokenSymbol()].accuracy);
+					  tt = ValueFromTCoins(txout.tokenLabel.value, (int)tokenDataMap[txout.tokenLabel.getTokenSymbol()].getAccuracy());
 				  }
  				  std::string strvalue = tt.get_str();
 				  out.push_back(Pair("TokenValue", strvalue));
@@ -224,7 +235,45 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
 			out.push_back(Pair("txLabelLen", txout.txLabelLen));
 			out.push_back(Pair("txLabel",txout.txLabel)); 
 			break;
+		case TXOUT_ADDTOKEN:
+		{
+				  out.push_back(Pair("TokenSymbol", txout.addTokenLabel.getTokenSymbol()));
+				  out.push_back(Pair("TokenValue", uint64_t(0)/*txout.tokenRegLabel.value*/));
+				  out.push_back(Pair("TokenHash", txout.addTokenLabel.hash.GetHex()));
+				  out.push_back(Pair("TokenLabel", txout.addTokenLabel.getTokenLabel()));
+				  out.push_back(Pair("TokenIssue", txout.addTokenLabel.issueDate));
+				  UniValue TokenTotalCount;
+				  if (isForIsolation)
+				  {
+					  TokenTotalCount = ValueFromTCoins(txout.addTokenLabel.totalCount, txout.addTokenLabel.accuracy);
+				  }
+				  else
+				  {
+					  TokenTotalCount = ValueFromTCoins(txout.addTokenLabel.totalCount, (int)tokenDataMap[txout.addTokenLabel.getTokenSymbol()].getAccuracy()).get_str();
+				  }
+				  UniValue TokenCurrentCount;
+				  if (isForIsolation)
+				  {
+					  TokenCurrentCount = ValueFromTCoins(txout.addTokenLabel.currentCount, txout.addTokenLabel.accuracy);
+				  }
+				  else
+				  {
+					  TokenCurrentCount = ValueFromTCoins(txout.addTokenLabel.currentCount, (int)tokenDataMap[txout.addTokenLabel.getTokenSymbol()].getAccuracy()).get_str();
+				  }
+				  out.push_back(Pair("automode", txout.addTokenLabel.addmode));
+				  out.push_back(Pair("height", txout.addTokenLabel.height));
+				  out.push_back(Pair("TokenTotalCount", TokenTotalCount.get_str()));
+				  out.push_back(Pair("TokenCurrentCount", TokenCurrentCount.get_str()));
 
+				  out.push_back(Pair("accuracy", txout.addTokenLabel.accuracy));
+				  out.push_back(Pair("txLabelLen", txout.txLabelLen));
+				  out.push_back(Pair("txLabel", txout.txLabel));
+
+				   
+
+		}
+
+			break;
 		default:
 		case 0:
 			break;

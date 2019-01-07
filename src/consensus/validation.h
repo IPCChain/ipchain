@@ -112,7 +112,7 @@ public:
 	std::map<uint128, std::pair<uint256, int>> TokenHashMap;
 	//Knowledge of transaction related unique value
 	std::map<uint128, std::pair<uint256, int>> IPCHashMap;
-	ADD_SERIALIZE_METHODS;
+/*	ADD_SERIALIZE_METHODS;
 
 	template <typename Stream, typename Operation>
 	inline void SerializationOp(Stream& s, Operation ser_action) {
@@ -120,6 +120,7 @@ public:
 		READWRITE(TokenHashMap);
 		READWRITE(IPCHashMap);
 	}
+	*/
 };
 class CKSizeClass
 {

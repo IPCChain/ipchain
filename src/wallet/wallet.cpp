@@ -185,6 +185,10 @@ std::string COutput::GetTokenSymbol() const{
 	{
 		return tx->tx->vout[i].tokenLabel.getTokenSymbol();
 	}
+	else if (txtype == TXOUT_ADDTOKEN)
+	{
+		return tx->tx->vout[i].addTokenLabel.getTokenSymbol();
+	}
 	return "";
 }
 uint8_t  COutput::GetTokenAccuracy() const{
@@ -198,6 +202,10 @@ uint8_t  COutput::GetTokenAccuracy() const{
 	else if (txtype == TXOUT_TOKEN)
 	{
 		return tx->tx->vout[i].tokenLabel.accuracy;
+	}
+	else if (txtype == TXOUT_ADDTOKEN)
+	{
+		return tx->tx->vout[i].addTokenLabel.accuracy;
 	}
 	return 0;
 }
@@ -213,6 +221,10 @@ uint64_t COutput::GetTokenvalue() const{
 	else if (txtype == TXOUT_TOKEN)
 	{
 		return tx->tx->vout[i].tokenLabel.value;
+	}
+	else if (txtype == TXOUT_ADDTOKEN)
+	{
+		return tx->tx->vout[i].addTokenLabel.currentCount;
 	}
 	return uint64_t(0);
 }
@@ -1971,7 +1983,7 @@ void CWalletTx::GetAmountsToken(const std::string& strtokensymbol, list<COutputE
 		uint8_t txtype = txout.txType;
 		if (txtype != txtp)
 			continue;
-		if (txtype != TXOUT_TOKENREG && txtype != TXOUT_TOKEN )
+		if (txtype != TXOUT_TOKENREG && txtype != TXOUT_TOKEN && txtype != TXOUT_ADDTOKEN)
 			continue;
 		isminetype fIsMine = pwallet->IsMine(txout);
 		// Only need to handle txouts if AT LEAST one of these is true:
@@ -2009,6 +2021,12 @@ void CWalletTx::GetAmountsToken(const std::string& strtokensymbol, list<COutputE
 			strsymbol = txout.tokenLabel.getTokenSymbol();
 			accuracy = txout.tokenLabel.accuracy;
 			tokenvalue = txout.tokenLabel.value;
+		}
+		else if (txtype == TXOUT_ADDTOKEN)
+		{
+			strsymbol = txout.addTokenLabel.getTokenSymbol();
+			accuracy = txout.addTokenLabel.accuracy;
+			tokenvalue = txout.addTokenLabel.currentCount;
 		}
 		if (strsymbol != strtokensymbol)
 			continue;
@@ -2063,7 +2081,7 @@ void CWalletTx::GetAmountsTokenForUnion(const std::string& strtokensymbol, list<
         uint8_t txtype = txout.txType;
         if (txtype != txtp)
             continue;
-        if (txtype != TXOUT_TOKENREG && txtype != TXOUT_TOKEN )
+		if (txtype != TXOUT_TOKENREG && txtype != TXOUT_TOKEN && txtype != TXOUT_ADDTOKEN)
             continue;
         isminetype fIsMine = pwallet->IsMine(txout);
         // Only need to handle txouts if AT LEAST one of these is true:
@@ -2101,10 +2119,16 @@ void CWalletTx::GetAmountsTokenForUnion(const std::string& strtokensymbol, list<
             accuracy = txout.tokenLabel.accuracy;
             tokenvalue = txout.tokenLabel.value;
         }
+		else if (txtype == TXOUT_ADDTOKEN)
+		{
+			strsymbol = txout.addTokenLabel.getTokenSymbol();
+			accuracy = txout.addTokenLabel.accuracy;
+			tokenvalue = txout.addTokenLabel.currentCount;
+		}
         if (strsymbol != strtokensymbol)
             continue;
 
-        if (isFindtxChange && nindex < i&&(txtype == TXOUT_TOKENREG||txtype == TXOUT_TOKEN))
+		if (isFindtxChange && nindex < i && (txtype == TXOUT_TOKENREG || txtype == TXOUT_TOKEN || txtype == TXOUT_ADDTOKEN))
             continue;
 
         COutputEntryToken output = { address, txout.nValue, (int)i, txtype, strsymbol ,accuracy,tokenvalue};
@@ -2269,7 +2293,7 @@ void CWalletTx::GetAmountsTokenForGetttx(list<COutputEntryToken>& listReceived,
 	{
 		const CTxOut& txout = tx->vout[i];
 		uint8_t txtype = txout.txType;
-		if (txtype != TXOUT_TOKENREG && txtype != TXOUT_TOKEN)
+		if (txtype != TXOUT_TOKENREG && txtype != TXOUT_TOKEN && txtype != TXOUT_ADDTOKEN)
 			continue;
 		isminetype fIsMine = pwallet->IsMine(txout);
 		// Only need to handle txouts if AT LEAST one of these is true:
@@ -2307,6 +2331,12 @@ void CWalletTx::GetAmountsTokenForGetttx(list<COutputEntryToken>& listReceived,
 			strsymbol = txout.tokenLabel.getTokenSymbol();
 			accuracy = txout.tokenLabel.accuracy;
 			tokenvalue = txout.tokenLabel.value;
+		}
+		else if (txtype == TXOUT_ADDTOKEN)
+		{
+			strsymbol = txout.addTokenLabel.getTokenSymbol();
+			accuracy = txout.addTokenLabel.accuracy;
+			tokenvalue = txout.addTokenLabel.currentCount;
 		}
 		
 		COutputEntryToken output = { address, txout.nValue, (int)i, txtype, strsymbol, accuracy, tokenvalue };
@@ -3239,20 +3269,20 @@ uint8_t CWallet::GetAccuracyBySymbol(std::string& tokensymbol)
 {
 	if (tokenDataMap.count(tokensymbol) == 0)
 		return 10;
-	return tokenDataMap[tokensymbol].accuracy;
+	return tokenDataMap[tokensymbol].getAccuracy();
 }
 uint32_t CWallet::GetIssueDateBySymbol(std::string& tokensymbol)
 {
 	if (tokenDataMap.count(tokensymbol) == 0)
 		return 0;
-	return tokenDataMap[tokensymbol].issueDate;
+	return tokenDataMap[tokensymbol].getIssueDate();
 }
 uint128 CWallet::GetHashBySymbol(std::string& tokensymbol)
 {
     uint128 temp;
     if (tokenDataMap.count(tokensymbol) == 0)
         return temp;
-    return tokenDataMap[tokensymbol].hash;
+    return tokenDataMap[tokensymbol].getHash();
 }
 
 
@@ -3283,6 +3313,11 @@ bool CWallet::GetSymbolbalance(std::string& tokensymbol, uint64_t& value,std::st
 		{
 			strsymbol = coin.tx->tx->vout[coin.i].tokenRegLabel.getTokenSymbol();
 			nvalue = coin.tx->tx->vout[coin.i].tokenRegLabel.totalCount;
+		}
+		else if (txtype == TXOUT_ADDTOKEN)
+		{
+			strsymbol = coin.tx->tx->vout[coin.i].addTokenLabel.getTokenSymbol();
+			nvalue = coin.tx->tx->vout[coin.i].addTokenLabel.totalCount;
 		}
 		else if (txtype == 5)
 		{
@@ -3328,9 +3363,13 @@ void CWallet::getListTokenBuildByMe(tokenInfoMap& tokeninfo)
 
         const CWalletTx* pcoin = &(*it).second;
         BOOST_FOREACH(const auto& vout,pcoin->tx->vout){
-            if(vout.txType == TXOUT_TOKENREG&&IsMine(vout)&&tokeninfo.count(vout.getTokenSymbol())==0){
+			if ((vout.txType == TXOUT_TOKENREG || vout.txType == TXOUT_ADDTOKEN) && IsMine(vout) && tokeninfo.count(vout.getTokenSymbol()) == 0){//no  TXOUT_ADDTOKEN
                     TokenByMeInfo info;
-                    uint8_t  accuracy = vout.tokenRegLabel.accuracy;
+					uint8_t  accuracy;
+					if (vout.txType == TXOUT_TOKENREG)
+						accuracy = vout.tokenRegLabel.accuracy;
+					else if (vout.txType == TXOUT_ADDTOKEN)
+						accuracy = vout.addTokenLabel.accuracy;
                     info.accuracy =   accuracy ;
                     info.confirmation = pcoin->GetDepthInMainChain();
                     info.txid = pcoin->GetHash().ToString();
@@ -3378,6 +3417,11 @@ void CWallet::UpdateTokenBalanceList( )
 			strsymbol = coin.tx->tx->vout[coin.i].tokenRegLabel.getTokenSymbol();
 			nvalue = coin.tx->tx->vout[coin.i].tokenRegLabel.totalCount;
 		}
+		else if (txtype == TXOUT_ADDTOKEN)
+		{
+			strsymbol = coin.tx->tx->vout[coin.i].addTokenLabel.getTokenSymbol();
+			nvalue = coin.tx->tx->vout[coin.i].addTokenLabel.currentCount;
+		}
 		else if (txtype == 5)
 		{
 			strsymbol = coin.tx->tx->vout[coin.i].tokenLabel.getTokenSymbol();
@@ -3404,6 +3448,11 @@ void CWallet::UpdateTokenBalanceList( )
 				{
 					strsymbol = coin.tx->tx->vout[coin.i].tokenRegLabel.getTokenSymbol();
 					nvalue = coin.tx->tx->vout[coin.i].tokenRegLabel.totalCount;
+				}
+				else if (txtype == TXOUT_ADDTOKEN)
+				{
+					strsymbol = coin.tx->tx->vout[coin.i].addTokenLabel.getTokenSymbol();
+					nvalue = coin.tx->tx->vout[coin.i].addTokenLabel.currentCount;
 				}
 				else if (txtype == 5)
 				{
@@ -3482,7 +3531,7 @@ void CWallet::AvailableTokenCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, 
 				if (!(IsSpent(wtxid, i)) && mine != ISMINE_NO &&
 					!IsLockedCoin((*it).first, i) && (pcoin->tx->vout[i].nValue >= 0 || fIncludeZeroValue) &&
 					(!coinControl || !coinControl->HasSelected() || coinControl->fAllowOtherInputs || coinControl->IsSelected(COutPoint((*it).first, i)))&&
-					(pcoin->tx->vout[i].txType == TXOUT_TOKEN || pcoin->tx->vout[i].txType == TXOUT_TOKENREG))//
+					(pcoin->tx->vout[i].txType == TXOUT_TOKEN || pcoin->tx->vout[i].txType == TXOUT_TOKENREG || pcoin->tx->vout[i].txType == TXOUT_ADDTOKEN))//
 					vCoins.push_back(COutput(pcoin, i, nDepth,
 					((mine & ISMINE_SPENDABLE) != ISMINE_NO) ||
 					(coinControl && coinControl->fAllowWatchOnly && (mine & ISMINE_WATCH_SOLVABLE) != ISMINE_NO),
@@ -3811,6 +3860,17 @@ bool CWallet::SelectTokenCoins(const std::vector<COutput>& vAvailableCoins, std:
 			}
 			return false;
 		}
+		else if (txtype == TXOUT_ADDTOKEN)
+		{
+			if (symbol != out.tx->tx->vout[out.i].addTokenLabel.getTokenSymbol())
+				continue;
+			if (out.tx->tx->vout[out.i].addTokenLabel.currentCount >= nTokenValue)
+			{
+				setCoinsRet.insert(make_pair(out.tx, out.i));
+				return true;
+			}
+			return false;
+		}
 		if (txtype == 5)
 		{
 			if (symbol != out.tx->tx->vout[out.i].tokenLabel.getTokenSymbol())
@@ -3933,6 +3993,18 @@ bool CWallet::SelectUnionTokenCoinsFromLimit(const std::vector<COutput>& vAvaila
             }
             return false;
         }
+		else if (txtype == TXOUT_ADDTOKEN)
+		{
+			if (symbol != out.tx->tx->vout[out.i].addTokenLabel.getTokenSymbol())
+				continue;
+			if (out.tx->tx->vout[out.i].addTokenLabel.currentCount >= nTokenValue)
+			{
+				setCoinsRet.insert(make_pair(out.tx, out.i));
+
+				return true;
+			}
+			return false;
+		}
         if (txtype == 5)
         {
             if (symbol != out.tx->tx->vout[out.i].tokenLabel.getTokenSymbol())
@@ -8738,6 +8810,503 @@ bool CWallet::CreateTokenRegTransaction(std::string& strReglabel, const std::vec
 	}
 	return true;
 }
+//To create a token registration transaction; StrReglabel: TokenRegLabel; VecSend: recipient information
+bool CWallet::CreateAddTokenRegTransactionByStrReglabel(std::string& strReglabel, const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut,
+	std::string& strFailReason, const CCoinControl *coinControl, bool sign)
+{
+	nFeeRet = 0;
+	CAmount nValue = 0;
+	int nChangePosRequest = nChangePosInOut;
+	unsigned int nSubtractFeeFromAmount = 0;
+	for (const auto& recipient : vecSend)
+	{
+		if (nValue < 0 || recipient.nAmount < 0)
+		{
+			strFailReason = _("Transaction amounts must not be negative");
+			return false;
+		}
+		nValue += recipient.nAmount;
+
+		if (recipient.fSubtractFeeFromAmount)
+			nSubtractFeeFromAmount++;
+		break;
+	}
+	if (vecSend.empty())
+	{
+		strFailReason = _("Transaction must have at least one recipient");
+		return false;
+	}
+
+	wtxNew.fTimeReceivedIsTxTime = true;
+	wtxNew.BindWallet(this);
+	CMutableTransaction txNew;
+
+	// Discourage fee sniping.
+	//
+	// For a large miner the value of the transactions in the best block and
+	// the mempool can exceed the cost of deliberately attempting to mine two
+	// blocks to orphan the current best block. By setting nLockTime such that
+	// only the next block can include the transaction, we discourage this
+	// practice as the height restricted and limited blocksize gives miners
+	// considering fee sniping fewer options for pulling off this attack.
+	//
+	// A simple way to think about this is from the wallet's point of view we
+	// always want the blockchain to move forward. By setting nLockTime this
+	// way we're basically making the statement that we only want this
+	// transaction to appear in the next block; we don't want to potentially
+	// encourage reorgs by allowing transactions to appear at lower heights
+	// than the next block in forks of the best chain.
+	//
+	// Of course, the subsidy is high enough, and transaction volume low
+	// enough, that fee sniping isn't a problem yet, but by implementing a fix
+	// now we ensure code won't be written that makes assumptions about
+	// nLockTime that preclude a fix later.
+	txNew.nLockTime = chainActive.Height();
+
+	// Secondly occasionally randomly pick a nLockTime even further back, so
+	// that transactions that are delayed after signing for whatever reason,
+	// e.g. high-latency mix networks and some CoinJoin implementations, have
+	// better privacy.
+	if (GetRandInt(10) == 0)
+		txNew.nLockTime = std::max(0, (int)txNew.nLockTime - GetRandInt(100));
+
+	assert(txNew.nLockTime <= (unsigned int)chainActive.Height());
+	assert(txNew.nLockTime < LOCKTIME_THRESHOLD);
+	payTxFee = CFeeRate(DEFAULT_TRANSACTION_FEE * 2);
+	if (strReglabel.size() == 0)
+	{
+		strFailReason = _("IPCRegTransaction must have IPCTokenLabel");
+		return false;
+	}
+	UniValue JsonIpclabel;
+	bool isNUll = JsonIpclabel.read(strReglabel);
+	if (!isNUll)
+	{
+		strFailReason = _("IPCRegTransaction must have strReglabel.");
+		return false;
+	}
+	AddTokenLabel label;
+	UniValue o = find_value(JsonIpclabel, "TokenSymbol");
+	if (o.isNull() || o.type() != UniValue::VSTR)
+	{
+		strFailReason = _("The IPCLabel's TokenSymbol err");
+		return false;
+	}
+	std::string strTokenSymbol = o.get_str();
+	if (strTokenSymbol == "")
+	{
+		strFailReason = _(" IPCTokenLabel's TokenSymbol is NULL");
+		return false;
+	}
+	if (strTokenSymbol.length() > 8)
+	{
+		strFailReason = _(" IPCTokenLabel's TokenSymbol is longer than 8");
+		return false;
+	}
+	strncpy((char*)(label.TokenSymbol), strTokenSymbol.c_str(), strTokenSymbol.length());
+	o = find_value(JsonIpclabel, "accuracy");
+	if (o.isNull() || o.type() != UniValue::VNUM){
+		strFailReason = _("The IPCLabel's accuracy err");
+		return false;
+	}
+	label.accuracy = o.get_int();
+	o = find_value(JsonIpclabel, "addmode");
+	if (o.isNull() || o.type() != UniValue::VNUM || (o.get_int() != 0 && o.get_int()!=1)){
+		strFailReason = _("The IPCLabel's accuracy err");
+		return false;
+	}
+	label.addmode = o.get_int();
+	//label.value = o.get_int64();
+	o = find_value(JsonIpclabel, "hash");
+	if (o.isNull() || o.type() != UniValue::VSTR)
+	{
+		strFailReason = _("The IPCLabel's hash err");
+		return false;
+	}
+	label.hash.SetHex(o.get_str());
+	o = find_value(JsonIpclabel, "label");
+	if (o.isNull() || o.type() != UniValue::VSTR)
+	{
+		strFailReason = _("The IPCLabel's label err");
+		return false;
+	}
+	std::string strlabel = o.get_str();
+	if (strlabel.length() > 16)
+	{
+		strFailReason = _(" IPCTokenLabel's Label is longer than 16");
+		return false;
+	}
+	strncpy((char*)(label.label), strlabel.c_str(), strlabel.length());
+	o = find_value(JsonIpclabel, "issueDate");
+	if (o.isNull() || o.type() != UniValue::VNUM)
+	{
+		strFailReason = _("The IPCLabel's issueDate err");
+		return false;
+	}
+	label.issueDate = o.get_int32();
+	o = find_value(JsonIpclabel, "totalCount");
+	if (o.isNull() || o.type() != UniValue::VNUM || o.get_int64() <= 0 || o.get_int64()>pow(10, 18))
+	{
+		strFailReason = _("The IPCLabel's totalCount err");
+		return false;
+	}
+	label.totalCount = o.get_int64()* pow(10, (int)label.accuracy);
+	if (label.totalCount <= 0 || label.totalCount > pow(10, 18))
+	{
+		strFailReason = _("The IPCLabel's totalCount err");
+		return false;
+	}
+	o = find_value(JsonIpclabel, "txLabel");
+	if (o.isNull() || o.type() != UniValue::VSTR)
+	{
+		strFailReason = _("The IPCLabel's txLabel err");
+		return false;
+	}
+	std::string TxLabel = o.get_str();
+	o = find_value(JsonIpclabel, "currentCount");
+	if (o.isNull() || o.type() != UniValue::VARR){
+		strFailReason = _("The IPCLabel's currentCount err");
+		return false;
+	}
+	int64_t total = label.totalCount ;
+	std::map<int, int> currentcountmap;
+	for (unsigned int idx = 0; idx < o.size(); idx++) {
+		UniValue pos = o[idx].get_obj();
+		if (pos.exists("height") == 0){
+			strFailReason = _("Invalid parameter, duplicated position:height");
+			return false;
+		}
+		if (pos.exists("count") == 0){
+			strFailReason = _("Invalid parameter, duplicated position:count");
+			return false;
+		}
+		int64_t nAmount = TCoinsFromValue(find_value(pos, "count"), label.accuracy);
+		if (nAmount <= 0){
+			strFailReason = _("Invalid token amount for send");
+			return false;
+		}
+		UniValue z = find_value(pos, "height");
+		if (z.isNull() || z.type() != UniValue::VNUM){
+			strFailReason = _("The IPCLabel's height err");
+			return false;
+		}
+
+		total -= nAmount;
+		if (currentcountmap.count(z.get_int64())!=0){
+			strFailReason = _("The IPCLabel's height err");
+			return false;
+		}
+		currentcountmap.insert(make_pair(z.get_int64(), nAmount));
+	}
+	if (o.size() != currentcountmap.size() && currentcountmap.size() < 1 || (total != 0 && label.addmode==0)){
+		strFailReason = _("The IPCLabel's currentcount size err");
+		return false;
+	}
+	CAmount nDefalutFee = 100 * COIN;
+	nValue += nDefalutFee;
+
+	{
+		set<pair<const CWalletTx*, unsigned int> > setCoins;
+		LOCK2(cs_main, cs_wallet);
+		{
+			std::vector<COutput> vAvailableCoins;
+			AvailableNormalCoins(vAvailableCoins, true, coinControl);
+
+			nFeeRet = 0;
+			// Start with no fee and loop until there is enough fee
+			while (true)
+			{
+				nChangePosInOut = nChangePosRequest;
+				txNew.vin.clear(); 
+				txNew.vout.clear();
+				wtxNew.fFromMe = true;
+
+				CAmount nValueToSelect = nValue;
+				if (nSubtractFeeFromAmount == 0)
+					nValueToSelect += nFeeRet;
+				double dPriority = 0;
+				// vouts to the payees
+				if (vecSend.size() != 1){
+					strFailReason = _("The vecSend's size err");
+					return false;
+				}
+					
+				for (auto i = currentcountmap.begin(); i!=currentcountmap.end(); i++){
+					AddTokenLabel labeltemp = label;
+					labeltemp.currentCount = i->second;
+					labeltemp.height = i->first;
+					CTxOut txout(vecSend[0].nAmount, vecSend[0].scriptPubKey, labeltemp, TxLabel);
+					txNew.vout.push_back(txout);
+				}
+
+				// Choose coins to use
+				CAmount nValueIn = 0;
+				setCoins.clear();
+				if (!SelectNormalCoins(vAvailableCoins, nValueToSelect, setCoins, nValueIn, coinControl))
+				{
+					strFailReason = _("Insufficient funds");
+					return false;
+				}
+				bool bFindChangScp = false;
+				CScript scriptChangeFind;
+				for (const auto& pcoin : setCoins)
+				{
+					if (!bFindChangScp)
+					{
+						scriptChangeFind = pcoin.first->tx->vout[pcoin.second].scriptPubKey;
+						bFindChangScp = true;
+					}
+					CAmount nCredit = pcoin.first->tx->vout[pcoin.second].nValue;
+					//The coin age after the next block (depth+1) is used instead of the current,
+					//reflecting an assumption the user would accept a bit more delay for
+					//a chance at a free transaction.
+					//But mempool inputs might still be in the mempool, so their age stays 0
+					int age = pcoin.first->GetDepthInMainChain();
+					assert(age >= 0);
+					if (age != 0)
+						age += 1;
+					dPriority += (double)nCredit * age;
+				}
+
+				const CAmount nChange = nValueIn - nValueToSelect;
+				if (nChange > 0)
+				{
+					// Fill a vout to ourself
+					// TODO: pass in scriptChange instead of reservekey so
+					// change transaction isn't always pay-to-ipchain-address
+					CScript scriptChange;
+
+					// coin control: send change to custom address
+					if (coinControl && !boost::get<CNoDestination>(&coinControl->destChange))
+						scriptChange = GetScriptForDestination(coinControl->destChange);
+
+					// no coin control: send change to newly generated address
+					else
+					{
+						// Note: We use a new key here to keep it from being obvious which side is the change.
+						//  The drawback is that by not reusing a previous key, the change may be lost if a
+						//  backup is restored, if the backup doesn't have the new private key for the change.
+						//  If we reused the old key, it would be possible to add code to look for and
+						//  rediscover unknown transactions that were written with keys of ours to recover
+						//  post-backup change.
+
+						// Reserve a new key pair from key pool
+						CPubKey vchPubKey;
+						bool ret;
+						ret = reservekey.GetReservedKey(vchPubKey);
+						if (!ret)
+						{
+							strFailReason = _("Keypool ran out, please call keypoolrefill first");
+							return false;
+						}
+
+						scriptChange = GetScriptForDestination(vchPubKey.GetID());
+					}
+
+					// Take the first input script as the destination output used for the coin change address
+					if (bFindChangScp)
+						scriptChange = scriptChangeFind;
+					CTxOut newTxOut(nChange, scriptChange);
+
+					// We do not move dust-change to fees, because the sender would end up paying more than requested.
+					// This would be against the purpose of the all-inclusive feature.
+					// So instead we raise the change and deduct from the recipient.
+					if (nSubtractFeeFromAmount > 0 && newTxOut.IsDust(dustRelayFee))
+					{
+						CAmount nDust = newTxOut.GetDustThreshold(dustRelayFee) - newTxOut.nValue;
+						newTxOut.nValue += nDust; // raise change until no more dust
+						for (unsigned int i = 0; i < vecSend.size(); i++) // subtract from first recipient
+						{
+							if (vecSend[i].fSubtractFeeFromAmount)
+							{
+								txNew.vout[i].nValue -= nDust;
+								if (txNew.vout[i].IsDust(dustRelayFee))
+								{
+									strFailReason = _("The transaction amount is too small to send after the fee has been deducted");
+									return false;
+								}
+								break;
+							}
+						}
+					}
+
+					// Never create dust outputs; if we would, just
+					// add the dust to the fee.
+					if (newTxOut.IsDust(dustRelayFee))
+					{
+						nChangePosInOut = -1;
+						nFeeRet += nChange;
+						reservekey.ReturnKey();
+					}
+					else
+					{
+						if (nChangePosInOut == -1)
+						{
+							// Insert change txn at end position:
+							nChangePosInOut = txNew.vout.size();
+						}
+						else if ((unsigned int)nChangePosInOut > txNew.vout.size())
+						{
+							strFailReason = _("Change index out of range");
+							return false;
+						}
+
+						vector<CTxOut>::iterator position = txNew.vout.begin() + nChangePosInOut;
+						txNew.vout.insert(position, newTxOut);
+					}
+				}
+				else
+					reservekey.ReturnKey();
+
+				// Fill vin
+				//
+				// Note how the sequence number is set to non-maxint so that
+				// the nLockTime set above actually works.
+				//
+				// BIP125 defines opt-in RBF as any nSequence < maxint-1, so
+				// we use the highest possible value in that range (maxint-2)
+				// to avoid conflicting with other possible uses of nSequence,
+				// and in the spirit of "smallest possible change from prior
+				// behavior."
+				for (const auto& coin : setCoins)
+					txNew.vin.push_back(CTxIn(coin.first->GetHash(), coin.second, CScript(),
+					std::numeric_limits<unsigned int>::max() - (fWalletRbf ? 2 : 1)));
+
+				// Fill in dummy signatures for fee calculation.
+				if (!DummySignTx(txNew, setCoins)) {
+					strFailReason = _("Signing transaction failed");
+					return false;
+				}
+
+				unsigned int nBytes = GetVirtualTransactionSize(txNew);
+
+				CTransaction txNewConst(txNew);
+				dPriority = txNewConst.ComputePriority(dPriority, nBytes);
+
+				// Remove scriptSigs to eliminate the fee calculation dummy signatures
+				for (auto& vin : txNew.vin) {
+					vin.scriptSig = CScript();
+					vin.scriptWitness.SetNull();
+				}
+
+				// Allow to override the default confirmation target over the CoinControl instance
+				int currentConfirmationTarget = nTxConfirmTarget;
+				if (coinControl && coinControl->nConfirmTarget > 0)
+					currentConfirmationTarget = coinControl->nConfirmTarget;
+
+				// Can we complete this as a free transaction?
+				if (fSendFreeTransactions && nBytes <= MAX_FREE_TRANSACTION_CREATE_SIZE)
+				{
+					// Not enough fee: enough priority?
+					double dPriorityNeeded = mempool.estimateSmartPriority(currentConfirmationTarget);
+					// Require at least hard-coded AllowFree.
+					if (dPriority >= dPriorityNeeded && AllowFree(dPriority))
+						break;
+				}
+
+				CAmount nFeeNeeded = GetMinimumFee(nBytes, currentConfirmationTarget, mempool);
+				if (coinControl && nFeeNeeded > 0 && coinControl->nMinimumTotalFee > nFeeNeeded) {
+					nFeeNeeded = coinControl->nMinimumTotalFee;
+				}
+				if (coinControl && coinControl->fOverrideFeeRate)
+					nFeeNeeded = coinControl->nFeeRate.GetFee(nBytes);
+
+				// If we made it here and we aren't even able to meet the relay fee on the next pass, give up
+				// because we must be at the maximum allowed fee.
+				if (nFeeNeeded < ::minRelayTxFee.GetFee(nBytes))
+				{
+					strFailReason = _("Transaction too large for fee policy");
+					return false;
+				}
+
+				if (nFeeRet >= nFeeNeeded) {
+					// Reduce fee to only the needed amount if we have change
+					// output to increase.  This prevents potential overpayment
+					// in fees if the coins selected to meet nFeeNeeded result
+					// in a transaction that requires less fee than the prior
+					// iteration.
+					// TODO: The case where nSubtractFeeFromAmount > 0 remains
+					// to be addressed because it requires returning the fee to
+					// the payees and not the change output.
+					// TODO: The case where there is no change output remains
+					// to be addressed so we avoid creating too small an output.
+					if (nFeeRet > nFeeNeeded && nChangePosInOut != -1 && nSubtractFeeFromAmount == 0) {
+						CAmount extraFeePaid = nFeeRet - nFeeNeeded;
+						vector<CTxOut>::iterator change_position = txNew.vout.begin() + nChangePosInOut;
+						change_position->nValue += extraFeePaid;
+						nFeeRet -= extraFeePaid;
+					}
+					break; // Done, enough fee included.
+				}
+
+				// Try to reduce change to include necessary fee
+				if (nChangePosInOut != -1 && nSubtractFeeFromAmount == 0) {
+					CAmount additionalFeeNeeded = nFeeNeeded - nFeeRet;
+					vector<CTxOut>::iterator change_position = txNew.vout.begin() + nChangePosInOut;
+					// Only reduce change if remaining amount is still a large enough output.
+					if (change_position->nValue >= MIN_FINAL_CHANGE + additionalFeeNeeded) {
+						change_position->nValue -= additionalFeeNeeded;
+						nFeeRet += additionalFeeNeeded;
+						break; // Done, able to increase fee from change
+					}
+				}
+
+				// Include more fee and try again.
+				nFeeRet = nFeeNeeded;
+				continue;
+			}
+		}
+
+		if (sign)
+		{
+			CTransaction txNewConst(txNew);
+			int nIn = 0;
+			for (const auto& coin : setCoins)
+			{
+				const CScript& scriptPubKey = coin.first->tx->vout[coin.second].scriptPubKey;
+				SignatureData sigdata;
+
+				if (!ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn, coin.first->tx->vout[coin.second].nValue, SIGHASH_ALL), scriptPubKey, sigdata))
+				{
+					strFailReason = _("Signing transaction failed");
+					return false;
+				}
+				else {
+					UpdateTransaction(txNew, nIn, sigdata);
+				}
+
+				nIn++;
+			}
+		}
+
+		// Embed the constructed transaction data in wtxNew.
+		wtxNew.SetTx(MakeTransactionRef(std::move(txNew)));
+
+		// Limit size
+		if (GetTransactionWeight(wtxNew) >= MAX_STANDARD_TX_WEIGHT)
+		{
+			strFailReason = _("Transaction too large");
+			return false;
+		}
+	}
+
+	if (GetBoolArg("-walletrejectlongchains", DEFAULT_WALLET_REJECT_LONG_CHAINS)) {
+		// Lastly, ensure this tx will pass the mempool's chain limits
+		LockPoints lp;
+		CTxMemPoolEntry entry(wtxNew.tx, 0, 0, 0, 0, 0, false, 0, lp);
+		CTxMemPool::setEntries setAncestors;
+		size_t nLimitAncestors = GetArg("-limitancestorcount", DEFAULT_ANCESTOR_LIMIT);
+		size_t nLimitAncestorSize = GetArg("-limitancestorsize", DEFAULT_ANCESTOR_SIZE_LIMIT) * 1000;
+		size_t nLimitDescendants = GetArg("-limitdescendantcount", DEFAULT_DESCENDANT_LIMIT);
+		size_t nLimitDescendantSize = GetArg("-limitdescendantsize", DEFAULT_DESCENDANT_SIZE_LIMIT) * 1000;
+		std::string errString;
+		if (!mempool.CalculateMemPoolAncestors(entry, setAncestors, nLimitAncestors, nLimitAncestorSize, nLimitDescendants, nLimitDescendantSize, errString)) {
+			strFailReason = _("Transaction has too long of a mempool chain");
+			return false;
+		}
+	}
+	return true;
+}
 //To create a token trade; Tokensymbol: token symbol; TokenValue: token trading details; VecSend: recipient information
 bool CWallet::CreateTokenTransaction(std::string& tokensymbol, uint64_t TokenValue, const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut,
 	std::string& strFailReason, const CCoinControl *coinControl, bool sign)
@@ -8820,7 +9389,7 @@ bool CWallet::CreateTokenTransaction(std::string& tokensymbol, uint64_t TokenVal
 		strFailReason = _("Can't found 'accuracy' of the Token");
 		return false;
 	}
-	tokenlabel.accuracy = tokenDataMap[tokenlabel.getTokenSymbol()].accuracy;
+	tokenlabel.accuracy = tokenDataMap[tokenlabel.getTokenSymbol()].getAccuracy();
 	{
 
 		set<pair<const CWalletTx*, unsigned int> > setCoins;
@@ -9007,6 +9576,8 @@ bool CWallet::CreateTokenTransaction(std::string& tokensymbol, uint64_t TokenVal
 				{
 					if (coin.first->tx->vout[coin.second].txType == 4)
 						TotalvalueVin += coin.first->tx->vout[coin.second].tokenRegLabel.totalCount;
+					else if (coin.first->tx->vout[coin.second].txType == TXOUT_ADDTOKEN)
+						TotalvalueVin += coin.first->tx->vout[coin.second].addTokenLabel.currentCount;
 					else
 						TotalvalueVin += coin.first->tx->vout[coin.second].tokenLabel.value;
 						
@@ -9270,7 +9841,7 @@ bool  CWallet::CreateTokenTransactionM(std::string& tokensymbol, const std::vect
 		strFailReason = _("Can't found 'accuracy' of the Token");
 		return false;
 	}
-	tokenlabel.accuracy = tokenDataMap[tokenlabel.getTokenSymbol()].accuracy;
+	tokenlabel.accuracy = tokenDataMap[tokenlabel.getTokenSymbol()].getAccuracy();
 	{
 
 		set<pair<const CWalletTx*, unsigned int> > setCoins;
@@ -9458,6 +10029,8 @@ bool  CWallet::CreateTokenTransactionM(std::string& tokensymbol, const std::vect
 				{
 					if (coin.first->tx->vout[coin.second].txType == 4)
 						TotalvalueVin += coin.first->tx->vout[coin.second].tokenRegLabel.totalCount;
+					else if (coin.first->tx->vout[coin.second].txType == TXOUT_ADDTOKEN)
+						TotalvalueVin += coin.first->tx->vout[coin.second].addTokenLabel.currentCount;
 					else
 						TotalvalueVin += coin.first->tx->vout[coin.second].tokenLabel.value;
 
@@ -9652,6 +10225,13 @@ int64_t getTokeNmunberFromCOutput(const COutput &out)
         else
             return out.tx->tx->vout[out.i].tokenRegLabel.totalCount;
     }
+	if (txtype == TXOUT_ADDTOKEN)
+	{
+		if (symbol == out.tx->tx->vout[out.i].addTokenLabel.getTokenSymbol())
+			return 0;
+		else
+			return out.tx->tx->vout[out.i].addTokenLabel.currentCount;
+	}
     if (txtype == 5)
     {
         if (symbol == out.tx->tx->vout[out.i].tokenLabel.getTokenSymbol())
@@ -9659,6 +10239,13 @@ int64_t getTokeNmunberFromCOutput(const COutput &out)
         else
             return  out.tx->tx->vout[out.i].tokenLabel.value;
     }
+	if (txtype == TXOUT_ADDTOKEN)
+	{
+		if (symbol == out.tx->tx->vout[out.i].addTokenLabel.getTokenSymbol())
+			return 0;
+		else
+			return out.tx->tx->vout[out.i].addTokenLabel.currentCount;
+	}
 }
 
 bool uniontokencoinscomp(const COutput &outa, const COutput &outb){
@@ -9745,7 +10332,7 @@ bool  CWallet::UnionCreateTokenTransactionM(std::string unionaddress,std::string
         strFailReason = _("Can't found 'accuracy' of the Token");
         return false;
     }
-    tokenlabel.accuracy = tokenDataMap[tokenlabel.getTokenSymbol()].accuracy;
+	tokenlabel.accuracy = tokenDataMap[tokenlabel.getTokenSymbol()].getAccuracy();
     {
 
         set<pair<const CWalletTx*, unsigned int> > setCoins;
@@ -9960,6 +10547,8 @@ bool  CWallet::UnionCreateTokenTransactionM(std::string unionaddress,std::string
                 {
                     if (coin.first->tx->vout[coin.second].txType == 4)
                         TotalvalueVin += coin.first->tx->vout[coin.second].tokenRegLabel.totalCount;
+					else if (coin.first->tx->vout[coin.second].txType == TXOUT_ADDTOKEN)
+						TotalvalueVin += coin.first->tx->vout[coin.second].addTokenLabel.currentCount;
                     else
                         TotalvalueVin += coin.first->tx->vout[coin.second].tokenLabel.value;
 
@@ -11631,7 +12220,7 @@ bool CWallet::GetChangeIndex(const CTransaction& tx, int& index) const
 		}
 		else if (txtp == TXOUT_IPCAUTHORIZATION && (ttype == TXOUT_IPCOWNER || ttype == TXOUT_IPCAUTHORIZATION))
 			break;
-		else if (txtp == TXOUT_TOKEN && (ttype == TXOUT_TOKEN || ttype == TXOUT_TOKENREG))
+		else if (txtp == TXOUT_TOKEN && (ttype == TXOUT_TOKEN || ttype == TXOUT_TOKENREG || ttype == TXOUT_ADDTOKEN))
 			break;
 		
 	}
@@ -11677,7 +12266,7 @@ bool CWallet::GetChangeIndexTokenUnion(const CTransaction& tx, int& index) const
         preindex = tvin.prevout.n;
         if (txtp == TXOUT_NORMAL)
             break;
-        else if (txtp == TXOUT_TOKENREG || txtp == TXOUT_IPCOWNER)
+		else if (txtp == TXOUT_TOKENREG || txtp == TXOUT_IPCOWNER || txtp == TXOUT_ADDTOKEN )
         {
             index = -1;
             return true;
@@ -11731,6 +12320,10 @@ uint64_t CWallet::GetDebitOfToken(const CTransaction& tx, const isminefilter& fi
 						debit += prev.tx->vout[txvin.prevout.n].tokenRegLabel.totalCount;
 						return debit;
 					}
+					else if (prev.tx->vout[txvin.prevout.n].txType == TXOUT_ADDTOKEN)
+					{
+						debit += prev.tx->vout[txvin.prevout.n].addTokenLabel.currentCount;
+					}
 					else if (prev.tx->vout[txvin.prevout.n].txType == 5)
 						debit += prev.tx->vout[txvin.prevout.n].tokenLabel.value;
 				}
@@ -11779,6 +12372,10 @@ uint64_t CWallet::GetDebitOfTokenForUnion(const CTransaction& tx, const isminefi
                         debit += prev.tx->vout[txvin.prevout.n].tokenRegLabel.totalCount;
                         return debit;
                     }
+					else  if (prev.tx->vout[txvin.prevout.n].txType == TXOUT_ADDTOKEN)
+					{
+						debit += prev.tx->vout[txvin.prevout.n].addTokenLabel.currentCount;
+					}
                     else if (prev.tx->vout[txvin.prevout.n].txType == 5)
                         debit += prev.tx->vout[txvin.prevout.n].tokenLabel.value;
                 }
@@ -11868,7 +12465,7 @@ bool CWallet::CreateTokenTransactionForCross(std::string& tokensymbol, const std
 		strFailReason = _("Can't found 'accuracy' of the Token");
 		return false;
 	}
-	tokenlabel.accuracy = tokenDataMap[tokenlabel.getTokenSymbol()].accuracy;
+	tokenlabel.accuracy = tokenDataMap[tokenlabel.getTokenSymbol()].getAccuracy();
 	{
 
 		set<pair<const CWalletTx*, unsigned int> > setCoins;
@@ -12056,6 +12653,8 @@ bool CWallet::CreateTokenTransactionForCross(std::string& tokensymbol, const std
 				{
 					if (coin.first->tx->vout[coin.second].txType == 4)
 						TotalvalueVin += coin.first->tx->vout[coin.second].tokenRegLabel.totalCount;
+					else if (coin.first->tx->vout[coin.second].txType == TXOUT_ADDTOKEN)
+						TotalvalueVin += coin.first->tx->vout[coin.second].addTokenLabel.currentCount;
 					else
 						TotalvalueVin += coin.first->tx->vout[coin.second].tokenLabel.value;
 
@@ -13885,7 +14484,7 @@ void CWallet::AvailableUnionCoinsCOutput(std::string& straddress, std::vector<CO
 				if (!(IsSpent(wtxid, i)) &&
 					!IsLockedCoin((*it).first, i) && (pcoin->tx->vout[i].nValue > 0 || fIncludeZeroValue) &&
 					(!coinControl || !coinControl->HasSelected() || coinControl->fAllowOtherInputs || coinControl->IsSelected(COutPoint((*it).first, i))) &&
-                    ((!isToken && pcoin->tx->vout[i].txType == TXOUT_NORMAL)||(isToken &&(pcoin->tx->vout[i].txType == TXOUT_TOKENREG || pcoin->tx->vout[i].txType == TXOUT_TOKEN)))){
+					((!isToken && pcoin->tx->vout[i].txType == TXOUT_NORMAL) || (isToken && (pcoin->tx->vout[i].txType == TXOUT_TOKENREG || pcoin->tx->vout[i].txType == TXOUT_TOKEN || pcoin->tx->vout[i].txType == TXOUT_ADDTOKEN)))){
 
 					vCoins.push_back(COutput(pcoin, i, nDepth,
 					((mine & ISMINE_SPENDABLE) != ISMINE_NO) ||
@@ -14049,6 +14648,416 @@ uint8_t CWallet::GetDebitOfIp(const CTransaction& tx, const isminefilter& filter
 		}
 	}
 	return debit;
+}
+
+bool CWallet::CreateAddTokenRegTransaction(std::string& strReglabel, const std::vector<CRecipientaddtoken>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut, std::string& strFailReason, const CCoinControl *coinControl /*= NULL*/, bool sign /*= true*/)
+{
+	nFeeRet = 0;
+	CAmount nValue = 0;
+	int nChangePosRequest = nChangePosInOut;
+	unsigned int nSubtractFeeFromAmount = 0;
+
+	if (vecSend.empty())
+	{
+		strFailReason = _("Transaction must have at least one recipient");
+		return false;
+	}
+	for (const auto& recipient : vecSend)
+	{
+
+	}
+	wtxNew.fTimeReceivedIsTxTime = true;
+	wtxNew.BindWallet(this);
+	CMutableTransaction txNew;
+
+	txNew.nLockTime = chainActive.Height();
+
+	if (GetRandInt(10) == 0)
+		txNew.nLockTime = std::max(0, (int)txNew.nLockTime - GetRandInt(100));
+
+	assert(txNew.nLockTime <= (unsigned int)chainActive.Height());
+	assert(txNew.nLockTime < LOCKTIME_THRESHOLD);
+	payTxFee = CFeeRate(DEFAULT_TRANSACTION_FEE * 2);
+	if (strReglabel.size() == 0)
+	{
+		strFailReason = _("IPCRegTransaction must have IPCTokenLabel");
+		return false;
+	}
+	UniValue JsonIpclabel;
+	bool isNUll = JsonIpclabel.read(strReglabel);
+
+	AddTokenLabel label;
+	label.version = 1;
+
+	UniValue o = find_value(JsonIpclabel, "TokenSymbol");
+	if (o.isNull() || o.type() != UniValue::VSTR)
+	{
+		strFailReason = _("The TokenIPCLabel's TokenSymbol err");
+		return false;
+	}
+	std::string strTokenSymbol = o.get_str();
+	if (strTokenSymbol == "")
+	{
+		strFailReason = _(" TokenLabel's TokenSymbol is NULL");
+		return false;
+	}
+	if (strTokenSymbol.length() > 8)
+	{
+		strFailReason = _(" IPCTokenLabel's TokenSymbol is longer than 8");
+		return false;
+	}
+	strncpy((char*)(label.TokenSymbol), strTokenSymbol.c_str(), strTokenSymbol.length());
+
+	o = find_value(JsonIpclabel, "automode");
+	if (o.isNull() || o.type() != UniValue::VNUM)
+	{
+		strFailReason = _("The TokenLabel's automode error");
+		return false;
+	}
+	label.addmode = o.get_int();
+	if (label.addmode != 0 && label.addmode != 1)
+	{
+		strFailReason = _("The TokenLabel's automode error,no 0 or 1");
+		return false;
+	}
+	o = find_value(JsonIpclabel, "hash");
+	if (o.isNull() || o.type() != UniValue::VSTR)
+	{
+		strFailReason = _("The TokenLabel's hash err");
+		return false;
+	}
+	label.hash.SetHex(o.get_str());
+	o = find_value(JsonIpclabel, "label");
+	if (o.isNull() || o.type() != UniValue::VSTR)
+	{
+		strFailReason = _("The TokenLabel's label err");
+		return false;
+	}
+	std::string strlabel = o.get_str();
+	if (strlabel.length() > 16)
+	{
+		strFailReason = _(" TokenLabel's Label is longer than 16");
+		return false;
+	}
+	strncpy((char*)(label.label), strlabel.c_str(), strlabel.length());
+	o = find_value(JsonIpclabel, "issueDate");
+	if (o.isNull() || o.type() != UniValue::VNUM)
+	{
+		strFailReason = _("The TokenLabel's issueDate err");
+		return false;
+	}
+	label.issueDate = o.get_int32();
+	o = find_value(JsonIpclabel, "totalCount");
+	if (o.isNull() || o.type() != UniValue::VNUM)
+	{
+		strFailReason = _("The TokenLabel's totalCount err");
+		return false;
+	}
+	label.totalCount = o.get_int64();
+	if (label.totalCount < 0 )
+	{
+		strFailReason = _("The TokenLabel's totalCount err,can't smaller than 0.");
+		return false;
+	}
+	o = find_value(JsonIpclabel, "accuracy");
+	if (o.isNull() || o.type() != UniValue::VNUM)
+	{
+		strFailReason = _("The TokenLabel's accuracy err");
+		return false;
+	}
+	label.accuracy = o.get_int();
+	
+	
+	CAmount nDefalutFee = 100 * COIN;
+	nValue += nDefalutFee;
+
+	{
+		set<pair<const CWalletTx*, unsigned int> > setCoins;
+		LOCK2(cs_main, cs_wallet);
+		{
+			std::vector<COutput> vAvailableCoins;
+			AvailableNormalCoins(vAvailableCoins, true, coinControl);
+
+			nFeeRet = 0;
+			// Start with no fee and loop until there is enough fee
+			while (true)
+			{
+				nChangePosInOut = nChangePosRequest;
+				txNew.vin.clear();
+				txNew.vout.clear();
+				wtxNew.fFromMe = true;
+
+				CAmount nValueToSelect = nValue;
+				if (nSubtractFeeFromAmount == 0)
+					nValueToSelect += nFeeRet;
+				double dPriority = 0;
+				// vouts to the payees
+				for (const auto& recipient : vecSend)
+				{
+					AddTokenLabel  outlabel = label;
+					outlabel.height = recipient.height;
+					outlabel.currentCount = recipient.tokenvalue;
+					outlabel.extendinfo = recipient.extendinfo;
+					CTxOut txout(CAmount(0), recipient.scriptPubKey, outlabel, recipient.txLabel);
+					txNew.vout.push_back(txout);
+					std::cout << "totalCount :"<<txout.addTokenLabel.totalCount<< std::endl;
+					std::cout << "tokenvalue :" << txout.addTokenLabel.currentCount << std::endl;
+				}
+
+				// Choose coins to use
+				CAmount nValueIn = 0;
+				setCoins.clear();
+				if (!SelectNormalCoins(vAvailableCoins, nValueToSelect, setCoins, nValueIn, coinControl))
+				{
+					strFailReason = _("Insufficient funds");
+					return false;
+				}
+				bool bFindChangScp = false;
+				CScript scriptChangeFind;
+				for (const auto& pcoin : setCoins)
+				{
+					if (!bFindChangScp)
+					{
+						scriptChangeFind = pcoin.first->tx->vout[pcoin.second].scriptPubKey;
+						bFindChangScp = true;
+					}
+					CAmount nCredit = pcoin.first->tx->vout[pcoin.second].nValue;
+					//The coin age after the next block (depth+1) is used instead of the current,
+					//reflecting an assumption the user would accept a bit more delay for
+					//a chance at a free transaction.
+					//But mempool inputs might still be in the mempool, so their age stays 0
+					int age = pcoin.first->GetDepthInMainChain();
+					assert(age >= 0);
+					if (age != 0)
+						age += 1;
+					dPriority += (double)nCredit * age;
+				}
+
+				const CAmount nChange = nValueIn - nValueToSelect;
+				if (nChange > 0)
+				{
+					// Fill a vout to ourself
+					// TODO: pass in scriptChange instead of reservekey so
+					// change transaction isn't always pay-to-ipchain-address
+					CScript scriptChange;
+
+					// coin control: send change to custom address
+					if (coinControl && !boost::get<CNoDestination>(&coinControl->destChange))
+						scriptChange = GetScriptForDestination(coinControl->destChange);
+
+					// no coin control: send change to newly generated address
+					else
+					{
+						// Note: We use a new key here to keep it from being obvious which side is the change.
+						//  The drawback is that by not reusing a previous key, the change may be lost if a
+						//  backup is restored, if the backup doesn't have the new private key for the change.
+						//  If we reused the old key, it would be possible to add code to look for and
+						//  rediscover unknown transactions that were written with keys of ours to recover
+						//  post-backup change.
+
+						// Reserve a new key pair from key pool
+						CPubKey vchPubKey;
+						bool ret;
+						ret = reservekey.GetReservedKey(vchPubKey);
+						if (!ret)
+						{
+							strFailReason = _("Keypool ran out, please call keypoolrefill first");
+							return false;
+						}
+
+						scriptChange = GetScriptForDestination(vchPubKey.GetID());
+					}
+
+					// Take the first input script as the destination output used for the coin change address
+					if (bFindChangScp)
+						scriptChange = scriptChangeFind;
+					CTxOut newTxOut(nChange, scriptChange);
+
+					// We do not move dust-change to fees, because the sender would end up paying more than requested.
+					// This would be against the purpose of the all-inclusive feature.
+					// So instead we raise the change and deduct from the recipient.
+					if (nSubtractFeeFromAmount > 0 && newTxOut.IsDust(dustRelayFee))
+					{
+						CAmount nDust = newTxOut.GetDustThreshold(dustRelayFee) - newTxOut.nValue;
+						newTxOut.nValue += nDust; // raise change until no more dust
+					}
+
+					// Never create dust outputs; if we would, just
+					// add the dust to the fee.
+					if (newTxOut.IsDust(dustRelayFee))
+					{
+						nChangePosInOut = -1;
+						nFeeRet += nChange;
+						reservekey.ReturnKey();
+					}
+					else
+					{
+						if (nChangePosInOut == -1)
+						{
+							// Insert change txn at end position:
+							nChangePosInOut = txNew.vout.size();
+						}
+						else if ((unsigned int)nChangePosInOut > txNew.vout.size())
+						{
+							strFailReason = _("Change index out of range");
+							return false;
+						}
+
+						vector<CTxOut>::iterator position = txNew.vout.begin() + nChangePosInOut;
+						txNew.vout.insert(position, newTxOut);
+					}
+				}
+				else
+					reservekey.ReturnKey();
+
+				// Fill vin
+				//
+				// Note how the sequence number is set to non-maxint so that
+				// the nLockTime set above actually works.
+				//
+				// BIP125 defines opt-in RBF as any nSequence < maxint-1, so
+				// we use the highest possible value in that range (maxint-2)
+				// to avoid conflicting with other possible uses of nSequence,
+				// and in the spirit of "smallest possible change from prior
+				// behavior."
+				for (const auto& coin : setCoins)
+					txNew.vin.push_back(CTxIn(coin.first->GetHash(), coin.second, CScript(),
+					std::numeric_limits<unsigned int>::max() - (fWalletRbf ? 2 : 1)));
+
+				// Fill in dummy signatures for fee calculation.
+				if (!DummySignTx(txNew, setCoins)) {
+					strFailReason = _("Signing transaction failed");
+					return false;
+				}
+
+				unsigned int nBytes = GetVirtualTransactionSize(txNew);
+
+				CTransaction txNewConst(txNew);
+				dPriority = txNewConst.ComputePriority(dPriority, nBytes);
+
+				// Remove scriptSigs to eliminate the fee calculation dummy signatures
+				for (auto& vin : txNew.vin) {
+					vin.scriptSig = CScript();
+					vin.scriptWitness.SetNull();
+				}
+
+				// Allow to override the default confirmation target over the CoinControl instance
+				int currentConfirmationTarget = nTxConfirmTarget;
+				if (coinControl && coinControl->nConfirmTarget > 0)
+					currentConfirmationTarget = coinControl->nConfirmTarget;
+
+				// Can we complete this as a free transaction?
+				if (fSendFreeTransactions && nBytes <= MAX_FREE_TRANSACTION_CREATE_SIZE)
+				{
+					// Not enough fee: enough priority?
+					double dPriorityNeeded = mempool.estimateSmartPriority(currentConfirmationTarget);
+					// Require at least hard-coded AllowFree.
+					if (dPriority >= dPriorityNeeded && AllowFree(dPriority))
+						break;
+				}
+
+				CAmount nFeeNeeded = GetMinimumFee(nBytes, currentConfirmationTarget, mempool);
+				if (coinControl && nFeeNeeded > 0 && coinControl->nMinimumTotalFee > nFeeNeeded) {
+					nFeeNeeded = coinControl->nMinimumTotalFee;
+				}
+				if (coinControl && coinControl->fOverrideFeeRate)
+					nFeeNeeded = coinControl->nFeeRate.GetFee(nBytes);
+
+				// If we made it here and we aren't even able to meet the relay fee on the next pass, give up
+				// because we must be at the maximum allowed fee.
+				if (nFeeNeeded < ::minRelayTxFee.GetFee(nBytes))
+				{
+					strFailReason = _("Transaction too large for fee policy");
+					return false;
+				}
+
+				if (nFeeRet >= nFeeNeeded) {
+					// Reduce fee to only the needed amount if we have change
+					// output to increase.  This prevents potential overpayment
+					// in fees if the coins selected to meet nFeeNeeded result
+					// in a transaction that requires less fee than the prior
+					// iteration.
+					// TODO: The case where nSubtractFeeFromAmount > 0 remains
+					// to be addressed because it requires returning the fee to
+					// the payees and not the change output.
+					// TODO: The case where there is no change output remains
+					// to be addressed so we avoid creating too small an output.
+					if (nFeeRet > nFeeNeeded && nChangePosInOut != -1 && nSubtractFeeFromAmount == 0) {
+						CAmount extraFeePaid = nFeeRet - nFeeNeeded;
+						vector<CTxOut>::iterator change_position = txNew.vout.begin() + nChangePosInOut;
+						change_position->nValue += extraFeePaid;
+						nFeeRet -= extraFeePaid;
+					}
+					break; // Done, enough fee included.
+				}
+
+				// Try to reduce change to include necessary fee
+				if (nChangePosInOut != -1 && nSubtractFeeFromAmount == 0) {
+					CAmount additionalFeeNeeded = nFeeNeeded - nFeeRet;
+					vector<CTxOut>::iterator change_position = txNew.vout.begin() + nChangePosInOut;
+					// Only reduce change if remaining amount is still a large enough output.
+					if (change_position->nValue >= MIN_FINAL_CHANGE + additionalFeeNeeded) {
+						change_position->nValue -= additionalFeeNeeded;
+						nFeeRet += additionalFeeNeeded;
+						break; // Done, able to increase fee from change
+					}
+				}
+
+				// Include more fee and try again.
+				nFeeRet = nFeeNeeded;
+				continue;
+			}
+		}
+
+		if (sign)
+		{
+			CTransaction txNewConst(txNew);
+			int nIn = 0;
+			for (const auto& coin : setCoins)
+			{
+				const CScript& scriptPubKey = coin.first->tx->vout[coin.second].scriptPubKey;
+				SignatureData sigdata;
+
+				if (!ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn, coin.first->tx->vout[coin.second].nValue, SIGHASH_ALL), scriptPubKey, sigdata))
+				{
+					strFailReason = _("Signing transaction failed");
+					return false;
+				}
+				else {
+					UpdateTransaction(txNew, nIn, sigdata);
+				}
+
+				nIn++;
+			}
+		}
+
+		// Embed the constructed transaction data in wtxNew.
+		wtxNew.SetTx(MakeTransactionRef(std::move(txNew)));
+
+		// Limit size
+		if (GetTransactionWeight(wtxNew) >= MAX_STANDARD_TX_WEIGHT)
+		{
+			strFailReason = _("Transaction too large");
+			return false;
+		}
+	}
+
+	if (GetBoolArg("-walletrejectlongchains", DEFAULT_WALLET_REJECT_LONG_CHAINS)) {
+		// Lastly, ensure this tx will pass the mempool's chain limits
+		LockPoints lp;
+		CTxMemPoolEntry entry(wtxNew.tx, 0, 0, 0, 0, 0, false, 0, lp);
+		CTxMemPool::setEntries setAncestors;
+		size_t nLimitAncestors = GetArg("-limitancestorcount", DEFAULT_ANCESTOR_LIMIT);
+		size_t nLimitAncestorSize = GetArg("-limitancestorsize", DEFAULT_ANCESTOR_SIZE_LIMIT) * 1000;
+		size_t nLimitDescendants = GetArg("-limitdescendantcount", DEFAULT_DESCENDANT_LIMIT);
+		size_t nLimitDescendantSize = GetArg("-limitdescendantsize", DEFAULT_DESCENDANT_SIZE_LIMIT) * 1000;
+		std::string errString;
+		if (!mempool.CalculateMemPoolAncestors(entry, setAncestors, nLimitAncestors, nLimitAncestorSize, nLimitDescendants, nLimitDescendantSize, errString)) {
+			strFailReason = _("Transaction has too long of a mempool chain");
+			return false;
+		}
+	}
+	return true;
 }
 
 CKeyPool::CKeyPool()

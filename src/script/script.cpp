@@ -258,6 +258,17 @@ bool CScript::IsPushOnly() const
     return this->IsPushOnly(begin());
 }
 
+bool CScript::IsPayToPublicKeyHash() const
+{
+	// Extra-fast test for pay-to-pubkey-hash CScripts:
+	return (this->size() == 25 &&
+		(*this)[0] == OP_DUP &&
+		(*this)[1] == OP_HASH160 &&
+		(*this)[2] == 0x14 &&
+		(*this)[23] == OP_EQUALVERIFY &&
+		(*this)[24] == OP_CHECKSIG);
+}
+
 std::string CScriptWitness::ToString() const
 {
     std::string ret = "CScriptWitness(";
