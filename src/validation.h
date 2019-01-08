@@ -160,8 +160,10 @@ static const unsigned int MAX_BLOCKS_TO_ANNOUNCE = 8;
 static const int MAX_UNCONNECTING_HEADERS = 10;
 
 static const bool DEFAULT_PEERBLOOMFILTERS = true;
-extern std::map<std::string, TokenRegLabel> tokenDataMap;	//Token map    key:symnbol   value:TokenRegLabel
+extern std::map<std::string, TokenReg> tokenDataMap;	//Token map    key:symnbol   value:TokenRegLabel
+extern std::map<std::string, TokenReg> newTokenDataMap;
 bool getAddressBalanceByTxlevel(std::string& address, CAmount& balance, CAmount& received, CAmount& sended, uint64_t& txidnum);
+bool getTokenBalanceByAddress(std::string& address,std::string& tokensymbol,CAmount& balance, CAmount& received, CAmount& sended, uint64_t& txidnum);
 
 CAmount Getfeebytxid(const CTransaction tx);   //Gets the transaction fee for the specified transaction
 uint64_t getTokenAllcoins(uint8_t accuracy);  //The maximum of totalCount is registered according to the precision
