@@ -383,24 +383,24 @@ bool IsValidTokenModelCheck(std::map<std::string, uint64_t>& tokenInRegRecord, s
 bool addTokenClassCompare(const AddTokenLabel& token1, const AddTokenLabel& token2){
 	if (token1.version != token2.version ||
 		token1.addmode != token2.addmode ||
-		token1.TokenSymbol != token2.TokenSymbol ||
 		token1.hash != token2.hash ||
 		token1.totalCount != token2.totalCount ||
-		token1.accuracy != token2.accuracy ||
-		token1.TokenSymbol != token2.TokenSymbol
-		)
+		token1.accuracy != token2.accuracy
+		){
+		std::cout << "info not same" << std::endl;
 		return false;
+	}
 	for (int i = 0; i < 9;i++)
 	{
-		if (token1.TokenSymbol[i] != token2.TokenSymbol[i])
-		{
+		if (token1.TokenSymbol[i] != token2.TokenSymbol[i]){
+			std::cout << "info not same TokenSymbol" << std::endl;
 			return false;
 		}
 	}
 	for (int i = 0; i < 17; i++)
 	{
-		if (token1.label[i] != token2.label[i])
-		{
+		if (token1.label[i] != token2.label[i]){
+			std::cout << "info not same label" << std::endl;
 			return false;
 		}
 	}
@@ -410,7 +410,9 @@ bool manualIssuancStandard(const CTxOut& txout, CValidationState &state,
 	uint64_t& currentTotalAmount, std::map<std::string, TokenReg>&tokenDataMaptemp,
 	std::string txid,int32_t voutIndex){
 	auto itor = tokenDataMaptemp.find(txout.addTokenLabel.getTokenSymbol());
+	std::cout << "manualIssuancStandard" << std::endl;
 	if (itor != tokenDataMaptemp.end()){
+		std::cout << "manualIssuancStandard in" << std::endl;
 		if (itor->second.m_tokentype == 4){
 			return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokenDataMap-repeat");
 		}
@@ -441,9 +443,11 @@ bool manualIssuancStandard(const CTxOut& txout, CValidationState &state,
 				if (addTokenLabel0.address != address){
 					return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokenregaddress-notsame");
 				}
+				std::cout << "m_addTokenLabel in" << std::endl;
 				auto temp=itor->second.m_addTokenLabel.begin();
 				while (temp != itor->second.m_addTokenLabel.end())
 				{
+					std::cout << "m_addTokenLabel ++" << temp->m_addTokenLabel.currentCount << std::endl;
 					currentTotalAmount += temp->m_addTokenLabel.currentCount;
 					temp++;
 				}
@@ -454,6 +458,7 @@ bool manualIssuancStandard(const CTxOut& txout, CValidationState &state,
 		else
 			return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokenDataMap-tokentype");
 	}
+	std::cout << "manualIssuancStandard end" << std::endl;
 	return true;
 }
 
@@ -1016,8 +1021,8 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 				}
 				else{
 					uint64_t currentTotalAmount = 0;
-					if (!manualIssuancStandard(txout, state, currentTotalAmount, tokenDataMap, tx.GetHash().ToString(), voutIndex) ||
-						!manualIssuancStandard(txout, state, currentTotalAmount, newTokenDataMap, tx.GetHash().ToString(), voutIndex)){
+					if (!manualIssuancStandard(txout, state, currentTotalAmount, tokenDataMap, tx.GetHash().ToString(), voutIndex ) ){
+					//	||!manualIssuancStandard(txout, state, currentTotalAmount, newTokenDataMap, tx.GetHash().ToString(), voutIndex)){
 						return false;
 					}
 					if (txout.addTokenLabel.currentCount > txout.addTokenLabel.totalCount - currentTotalAmount)
