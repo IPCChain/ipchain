@@ -2487,9 +2487,9 @@ UniValue addtokenregtoaddress(const JSONRPCRequest& request)
 		"\nResult:\n"
 		"\"txid\"                  (string) The transaction id.\n"
 		"\nExamples:\n"
-		+ HelpExampleCli("ipctokenregtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"  \"{\"TokenSymbol\":\"flycoin\",\"automode\":0,\"hash\":\"cec3144f63c09aa6e2dc03c370f339c1\",\"label\":\"NewCoin\",\"issueDate\":1508234422,\"totalCount\":10000000,\"accuracy\":2}\" ")
+		+ HelpExampleCli("ipctokenregtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"  \"{\"TokenSymbol\":\"flycoin\",\"automode\":0,\"hash\":\"cec3144f63c09aa6e2dc03c370f339c1\",\"label\":\"NewCoin\",\"issueDate\":1508234422,\"totalCount\":10000,\"accuracy\":2}\"  \"[{\"height\":250,\"tokenvalue\":10000,\"extendinfo\":\"sss\",\"txlabel\":\" \"}]\" ")
 
-		+ HelpExampleRpc("ipctokenregtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", \"{\"TokenSymbol\":\"flycoin\",\"automode\":0,\"hash\":\"cec3144f63c09aa6e2dc03c370f339c1\",\"label\":\"NewCoin\",\"issueDate\":1508234422,\"totalCount\":10000000,\"accuracy\":2}\"")
+		+ HelpExampleRpc("ipctokenregtoaddress", "\"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\"  \"{\"TokenSymbol\":\"flycoin\",\"automode\":0,\"hash\":\"cec3144f63c09aa6e2dc03c370f339c1\",\"label\":\"NewCoin\",\"issueDate\":1508234422,\"totalCount\":10000,\"accuracy\":2}\"  \"[{\"height\":250,\"tokenvalue\":10000,\"extendinfo\":\"sss\",\"txlabel\":\" \"}]\" ")
 		);
 
 	LOCK2(cs_main, pwalletMain->cs_wallet);
