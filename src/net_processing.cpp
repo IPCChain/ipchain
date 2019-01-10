@@ -1896,7 +1896,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         CTransactionRef ptx;
         vRecv >> ptx;
         const CTransaction& tx = *ptx;
-
+		std::cout << "strCommand == NetMsgType::TX " << tx.GetHash().ToString()<< std::endl;
         CInv inv(MSG_TX, tx.GetHash());
         pfrom->AddInventoryKnown(inv);
 
