@@ -358,7 +358,7 @@ bool CVerifyDB:: FlushICMToDisk()
 	CSerializeDpoc<TokenRegLabel> rwSerTokenData;
 	CSerializeDpoc<AddTokenReg> rwSerTokenDataAdd;
 	std::map<std::string, TokenReg>::iterator TDit;
-	
+	std::cout << "WriteToDisk:newTokenDataMap:" << std::endl;
 	for (TDit = newTokenDataMap.begin(); TDit != newTokenDataMap.end(); TDit++)
 	{
 		if (TDit->second.getTokenType() == TXOUT_ADDTOKEN){
@@ -378,6 +378,7 @@ bool CVerifyDB:: FlushICMToDisk()
 				ttTokenRegDataadd.m_addTokenLabel.currentCount = addTokenLabel.m_addTokenLabel.currentCount;
 				ttTokenRegDataadd.m_addTokenLabel.accuracy = addTokenLabel.m_addTokenLabel.accuracy;
 				ttTokenRegDataadd.m_addTokenLabel.extendinfo = addTokenLabel.m_addTokenLabel.extendinfo;
+				std::cout << "WriteToDisk:currentCount:" << ttTokenRegDataadd.m_addTokenLabel.currentCount << std::endl;
 				if (!rwSerTokenDataAdd.WriteToDisk(ttTokenRegDataadd, FileTokenDataName)){
 					LogPrintf(" [FlushICMToDisk] : [WriteToDisk : %s] ,return erro! \n", FileTokenDataName);
 					return false;
@@ -520,10 +521,12 @@ bool CVerifyDB::LoadICMFromDisk()
 				tempTokenReg.m_tokentype = TXOUT_ADDTOKEN;
 				tempTokenReg.m_addTokenLabel.push_back(ttaddTokenRegData);
 				tokenDataMap.insert(std::make_pair(ttaddTokenRegData.m_addTokenLabel.getTokenSymbol(), tempTokenReg));
+				
 			}
 			else{
 				(tempaddTokenDataMap->second.m_addTokenLabel).push_back(ttaddTokenRegData);
 			}
+			std::cout << "ReadFromDisk:currentCount:" << ttaddTokenRegData.m_addTokenLabel.currentCount << std::endl;
 			nSeek += ttaddTokenRegData.size();
 		}
 	}
@@ -574,12 +577,14 @@ void PushTxToIPCValuesToMap(const CTransaction& tx, IPCCheckMaps* pIPCCheckMaps)
 }
 void PushTxToTokenDataMap(const CTransaction& tx, std::map<std::string, TokenReg>* pTokenDataMap)
 {
+	std::cout << "PushTxToTokenDataMap" << std::endl;
 	for (int i = 0; i < tx.vout.size(); i++) {
 		const CTxOut& txout = tx.vout[i];
 		if (txout.txType == 4){
 			pTokenDataMap->insert(std::make_pair(txout.tokenRegLabel.getTokenSymbol(), TokenReg(txout.tokenRegLabel)));
 		}
 		else if (txout.txType == TXOUT_ADDTOKEN){
+			std::cout << "TXOUT_ADDTOKEN" << std::endl;
 				CScript script = txout.scriptPubKey;
 				txnouttype typeRet;
 				std::vector<CTxDestination> prevdestes;
@@ -594,8 +599,10 @@ void PushTxToTokenDataMap(const CTransaction& tx, std::map<std::string, TokenReg
 						break;
 					}
 				}
-				if(!address.empty())
-					pTokenDataMap->insert(std::make_pair(txout.addTokenLabel.getTokenSymbol(),TokenReg(txout.addTokenLabel, tx.GetHash().ToString().c_str(),i,address)));
+				if (!address.empty()){
+					pTokenDataMap->insert(std::make_pair(txout.addTokenLabel.getTokenSymbol(), TokenReg(txout.addTokenLabel, tx.GetHash().ToString().c_str(), i, address)));
+					std::cout << "pTokenDataMap->insert" << std::endl;
+				}
 		}
 	}
 }
