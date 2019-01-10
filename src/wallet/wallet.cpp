@@ -14649,6 +14649,38 @@ uint8_t CWallet::GetDebitOfIp(const CTransaction& tx, const isminefilter& filter
 	}
 	return debit;
 }
+bool CWallet::regaddressfirst(std::vector<COutput> &vAvailableCoins, const std::vector<CRecipientaddtoken>&vecSend){
+	if (vecSend.empty()){
+		return false;
+	}
+	int needswap = 0;
+	bool findaddress = false;
+	for (int i = 0; i < vAvailableCoins.size();i++)
+	{
+		const CTxOut& txout = vAvailableCoins[i].tx->tx->vout[vAvailableCoins[i].i];
+		CScript script = txout.scriptPubKey;
+		txnouttype typeRet;
+		std::vector<CTxDestination> prevdestes;
+		int nRequiredRet;
+		CScript address;
+		bool fValidAddress = ExtractDestinations(script, typeRet, prevdestes, nRequiredRet);
+		if (fValidAddress){
+			BOOST_FOREACH(CTxDestination &prevdest, prevdestes){
+				CBitcoinAddress add(prevdest);
+				address = GetScriptForDestination(add.Get());
+				break;
+			}
+		}
+		if (vecSend[0].scriptPubKey == address){
+			findaddress = true;
+			if (needswap < vAvailableCoins.size() && needswap < i){
+				swap(vAvailableCoins[needswap], vAvailableCoins[i]);
+				needswap++;
+			}
+		}
+	}
+	return findaddress;
+}
 
 bool CWallet::CreateAddTokenRegTransaction(std::string& strReglabel, const std::vector<CRecipientaddtoken>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut, std::string& strFailReason, const CCoinControl *coinControl /*= NULL*/, bool sign /*= true*/)
 {
@@ -14661,10 +14693,6 @@ bool CWallet::CreateAddTokenRegTransaction(std::string& strReglabel, const std::
 	{
 		strFailReason = _("Transaction must have at least one recipient");
 		return false;
-	}
-	for (const auto& recipient : vecSend)
-	{
-
 	}
 	wtxNew.fTimeReceivedIsTxTime = true;
 	wtxNew.BindWallet(this);
@@ -14777,7 +14805,10 @@ bool CWallet::CreateAddTokenRegTransaction(std::string& strReglabel, const std::
 		{
 			std::vector<COutput> vAvailableCoins;
 			AvailableNormalCoins(vAvailableCoins, true, coinControl);
-
+			if (!regaddressfirst(vAvailableCoins, vecSend)){
+				strFailReason = _("Regaddress error or insufficient funds");
+				return false;
+			}
 			nFeeRet = 0;
 			// Start with no fee and loop until there is enough fee
 			while (true)
