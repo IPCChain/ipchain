@@ -305,7 +305,148 @@ bool IsValidIPCModelCheck(const CTransaction& tx, std::map<uint128, IPCLabel>& I
 
 	return true;
 }
+bool tokenRecordCheck(std::map<std::string, uint64_t>& tokenRecord, std::string& tokenname,
+	uint64_t& amount, CValidationState& state, std::string msg )
+{
+	if (tokenRecord.size() != 1)
+		return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokenRecord-sizeerror");
+	std::string tempname = tokenRecord.begin()->first;
+	if (tokenname.empty())
+		tokenname = tempname;
+	else{
+		if (tokenname != tempname){
+			if (msg == "InReg")return state.DoS(100, false, REJECT_INVALID, "bad-Token-InReg-toomanysymbol");
+			else if (msg == "In")return state.DoS(100, false, REJECT_INVALID, "bad-Token-In-toomanysymbol");
+			else if (msg == "OutReg")return state.DoS(100, false, REJECT_INVALID, "bad-Token-OutReg-toomanysymbol");
+			else if (msg == "Out")return state.DoS(100, false, REJECT_INVALID, "bad-Token-Out-toomanysymbol");
+			else return state.DoS(100, false, REJECT_INVALID, "bad-Token-InReg-toomanysymbol");
+		}
+	}
+	if (tokenRecord.begin()->second > TOKEN_MAX_VALUE){
+		if (msg == "InReg")return state.DoS(100, false, REJECT_INVALID, "bad-Token-InReg-amountbyeondmax");
+		else if (msg == "In")return state.DoS(100, false, REJECT_INVALID, "bad-Token-In-amountbyeondmax");
+		else if (msg == "OutReg")return state.DoS(100, false, REJECT_INVALID, "bad-Token-OutReg-amountbyeondmax");
+		else if (msg == "Out")return state.DoS(100, false, REJECT_INVALID, "bad-Token-Out-amountbyeondmax");
+		else return state.DoS(100, false, REJECT_INVALID, "bad-Token-InReg-amountbyeondmax");
+	}
+	amount += tokenRecord.begin()->second;
+	if (amount > TOKEN_MAX_VALUE)		{
+		if (msg == "InReg")return state.DoS(100, false, REJECT_INVALID, "bad-Token-InReg-totalamountbyeond");
+		else if (msg == "In")return state.DoS(100, false, REJECT_INVALID, "bad-Token-In-totalamountbyeond");
+		else if (msg == "OutReg")return state.DoS(100, false, REJECT_INVALID, "bad-Token-OutReg-totalamountbyeond");
+		else if (msg == "Out")return state.DoS(100, false, REJECT_INVALID, "bad-Token-Out-totalamountbyeond");
+		else return state.DoS(100, false, REJECT_INVALID, "bad-Token-InReg-totalamountbyeond");
+	}
+	return true;
+}
+//Scrip transaction model type constraint checking subfunctions
+bool IsValidTokenModelCheckForAdd(std::map<std::string, uint64_t>& tokenInRegRecord, std::map<std::string, uint64_t>& tokenInRecord,
+std::map<std::string, uint64_t>& tokenOutRegRecord, std::map<std::string, uint64_t>& tokenOutRecord, 
+CValidationState& state, int addtokenmodel)
+{
+	std::map<std::string, uint64_t>::iterator tokenTxIteator;
+	if (tokenInRegRecord.size() > 1 || tokenInRecord.size() > 1 ||
+		tokenOutRegRecord.size() > 1 || tokenOutRecord.size() > 1){
+		return state.DoS(100, false, REJECT_INVALID, "bad-Token-token-toomany");
+	}
+	if ((tokenInRegRecord.size() == 0 && tokenInRecord.size() == 0 && tokenOutRegRecord.size() == 0) ||
+		(tokenOutRegRecord.size() == 0 && tokenOutRecord.size() == 0)||
+		(tokenOutRegRecord.size() == 1 && (tokenOutRecord.size() == 1 || tokenInRecord.size() == 1 || tokenInRegRecord.size() == 1))||
+		(tokenOutRegRecord.size() == 0 && tokenOutRecord.size() == 0 && tokenInRecord.size() == 0 && tokenInRegRecord.size() == 0)){
+		return state.DoS(100, false, REJECT_INVALID, "bad-Token-amount-error");
+	}
+	std::string tokenname;
+	uint64_t intotalamount = 0;
+	uint64_t outtotalamount = 0;
+	std::cout << "tokenInRegRecord" << std::endl;
+	if (tokenInRegRecord.size() == 1 && !tokenRecordCheck(tokenInRegRecord, tokenname, intotalamount, state, "InReg"))
+		return false;
+	std::cout << "tokenInRecord" << std::endl;
+	if (tokenInRecord.size() == 1 && !tokenRecordCheck(tokenInRecord, tokenname, intotalamount, state,"In"))
+		return false;
+	std::cout << "tokenOutRegRecord" << std::endl;
+	if (tokenOutRegRecord.size() == 1 && !tokenRecordCheck(tokenOutRegRecord, tokenname, outtotalamount, state,"OutReg"))
+		return false;
+	std::cout << "tokenOutRecord" << std::endl;
+	if (tokenOutRecord.size() == 1 && !tokenRecordCheck(tokenOutRecord, tokenname, outtotalamount, state,"Out"))
+		return false;
+	if (tokenOutRegRecord.size() == 0 && intotalamount != outtotalamount){
+		std::cout << "intotalamount:" << intotalamount << " outtotalamount:" << outtotalamount << std::endl;
+		return state.DoS(100, false, REJECT_INVALID, "bad-Token-vinvout-amountMismatch");
+	}
+	/*
+	tokenTxIteator = tokenInRegRecord.begin();
+	while (tokenTxIteator != tokenInRegRecord.end())
+	{
+		//Joint check: for the same Symbol, there should be no registration type and type of transaction in the input
+	//	if (tokenInRecord.count(tokenTxIteator->first) > 0)
+	//		return state.DoS(100, false, REJECT_INVALID, "bad-Token-Multi-inType");
 
+		//For a register type, the output must have a transaction type output corresponding to Symbol
+		if (tokenOutRecord.count(tokenTxIteator->first) <= 0)
+			return state.DoS(100, false, REJECT_INVALID, "bad-Token-reg-to-none");
+
+		tokenTxIteator++;
+		//continue;
+	}
+	if ((Params().NetworkIDString() == CBaseChainParams::MAIN) ||
+		((Params().NetworkIDString() == CBaseChainParams::TESTNET) && ((int)chainActive.Height() > 861900)))
+	{
+		tokenTxIteator = tokenInRecord.begin();
+		while (tokenTxIteator != tokenInRecord.end())
+		{
+			if (tokenOutRecord.count(tokenTxIteator->first) <= 0)
+				return state.DoS(100, false, REJECT_INVALID, "bad-Token-token-to-none");
+
+			tokenTxIteator++;
+			//continue;
+		}
+	}
+	tokenTxIteator = tokenOutRegRecord.begin();
+	while (tokenTxIteator != tokenOutRegRecord.end())
+	{
+		//Joint check: for the same Symbol, there should be no registration type and type of transaction in the output
+		if (tokenOutRecord.count(tokenTxIteator->first) > 0)
+			return state.DoS(100, false, REJECT_INVALID, "bad-Token-Multi-outType");
+
+		tokenTxIteator++;
+		//continue;
+	}
+
+	//The type of token token type is checked for the output
+	tokenTxIteator = tokenOutRecord.begin();
+	while (tokenTxIteator != tokenOutRecord.end())
+	{
+		uint64_t totalin = 0;
+		//If there is a registration record for Symbol in the input, this is a distribution transaction
+		if (tokenInRegRecord.count(tokenTxIteator->first) > 0)
+		{
+			totalin += tokenInRegRecord[tokenTxIteator->first];
+			//Verify that the total amount of the corresponding transaction in the input is equal to the total amount corresponding to the transaction in the output. Otherwise, the report is wrong
+			//if (tokenTxIteator->second != tokenInRegRecord[tokenTxIteator->first])
+		   //		return state.DoS(100, false, REJECT_INVALID, "bad-Token-regtotoken-value-unequal");
+			//tokenTxIteator++;
+			//continue;
+		}
+		//Otherwise, if there is a transaction record of Symbol in the input, it proves that this is a token currency transaction
+		if (tokenInRecord.count(tokenTxIteator->first) > 0)
+		{
+			totalin += tokenInRecord[tokenTxIteator->first];
+			//Verify that the total amount of the corresponding transaction in the input is equal to the total amount corresponding to the transaction in the output. Otherwise, the report is wrong
+			//if (tokenTxIteator->second != tokenInRecord[tokenTxIteator->first])
+			//	return state.DoS(100, false, REJECT_INVALID, "bad-Token-value-unequal");
+			//tokenTxIteator++;
+			//continue;
+		}
+		if (totalin != tokenTxIteator->second)
+		{
+			return state.DoS(100, false, REJECT_INVALID, "bad-Token-output-error");
+		}
+		if (tokenOutRegRecord.count(tokenTxIteator->first) > 0)
+			return state.DoS(100, false, REJECT_INVALID, "bad-Token-Multi-outType");
+	}*/
+	return true;
+}
 //Scrip transaction model type constraint checking subfunctions
 bool IsValidTokenModelCheck(std::map<std::string, uint64_t>& tokenInRegRecord, std::map<std::string, uint64_t>& tokenInRecord,
 	std::map<std::string, uint64_t>& tokenOutRegRecord, std::map<std::string, uint64_t>& tokenOutRecord, CValidationState& state)
@@ -644,10 +785,10 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 			
 			if (prev.nValue != 0)
 				return state.DoS(100, false, REJECT_INVALID, "Vin5-IPC-nValue-must-be-zero");
-			
+		
 			if (prev.tokenLabel.accuracy != tokenDataMap[prev.tokenLabel.getTokenSymbol()].getAccuracy())
 				return state.DoS(100, false, REJECT_INVALID, "Vin-Token-accuracy-error");
-			
+
 			if (tokenInRecord.count(prev.tokenLabel.getTokenSymbol()) > 0)
 			{
 				tokenTxInputTotalValue = tokenInRecord[prev.tokenLabel.getTokenSymbol()];
@@ -658,7 +799,6 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 			{
 				tokenInRecord[prev.tokenLabel.getTokenSymbol()] = prev.tokenLabel.value;
 			}
-			
 
 			tokeninCount++;
 			break;			
@@ -680,7 +820,20 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 				return state.DoS(100, false, REJECT_INVALID, "Vin-Token-accuracy-error");
 			}
 
-			tokenInRegRecord[prev.addTokenLabel.getTokenSymbol()] = prev.addTokenLabel.totalCount;
+			//tokenInRegRecord[prev.addTokenLabel.getTokenSymbol()] = prev.addTokenLabel.currentCount;
+
+			if (tokenInRegRecord.count(prev.addTokenLabel.getTokenSymbol()) > 0)
+			{
+				uint64_t tokenTxInputTotalValue = tokenInRegRecord[prev.addTokenLabel.getTokenSymbol()];
+				tokenTxInputTotalValue += prev.addTokenLabel.currentCount;
+				tokenInRegRecord[prev.addTokenLabel.getTokenSymbol()] = tokenTxInputTotalValue;
+			}
+			else
+			{
+				tokenInRegRecord[prev.addTokenLabel.getTokenSymbol()] = prev.addTokenLabel.currentCount;
+			}
+
+
 			tokeninCount++;
 			break;
 		default:
@@ -1052,8 +1205,12 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 			if (address.empty())
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-voutaddress-error");
 			auto result = find(txindestes.begin(), txindestes.end(), address);
-			if (result == txindestes.end())
+			if (result == txindestes.end()){
+				BOOST_FOREACH(auto &txindestesaddress, txindestes)
+					std::cout << " txindestes address : " << txindestesaddress << std::endl;
+				std::cout << " reg address : " << address << std::endl;
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokenregaddress-notmine");
+			}
 
 			if (addtokenmodel == 1 && modetokensymbol && modetokenhash){
 				uint64_t currentTotalAmount = 0;
@@ -1078,8 +1235,18 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 
 			if (addtokenmodel == 1 && tokenOutRegRecord.count(txout.addTokenLabel.getTokenSymbol()) > 0)
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-manualIssuanc-repeat");
-			if (tokenOutRegRecord.count(txout.addTokenLabel.getTokenSymbol()) == 0)
-				tokenOutRegRecord[txout.addTokenLabel.getTokenSymbol()] = txout.addTokenLabel.totalCount;
+			//if (tokenOutRegRecord.count(txout.addTokenLabel.getTokenSymbol()) == 0)
+			//	tokenOutRegRecord[txout.addTokenLabel.getTokenSymbol()] = txout.addTokenLabel.totalCount;
+
+			if (tokenOutRegRecord.count(txout.addTokenLabel.getTokenSymbol()) > 0)
+			{
+				uint64_t value = tokenOutRegRecord[txout.addTokenLabel.getTokenSymbol()];
+				value += txout.addTokenLabel.currentCount;
+				tokenOutRegRecord[txout.addTokenLabel.getTokenSymbol()] = value;
+			}
+			else
+				tokenOutRegRecord[txout.addTokenLabel.getTokenSymbol()] = txout.addTokenLabel.currentCount;
+
 
 			tokenoutCount++;
 		}
@@ -1099,9 +1266,15 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 		(IPCoutCount > 0 && devoteoutCount > 0) ||
 		(devoteoutCount > 0 && tokenoutCount > 0))
 		return state.DoS(100, false, REJECT_INVALID, "multi-txType-output-forbidden");
-
-	if (!IsValidTokenModelCheck(tokenInRegRecord, tokenInRecord, tokenOutRegRecord, tokenOutRecord, state))
-		return false;
+	if (addtokenmodel != -1 || (tokenOutRecord.size()>0 && tokenDataMap.count(tokenOutRecord.begin()->first)>0 && tokenDataMap[tokenOutRecord.begin()->first].m_tokentype == TXOUT_ADDTOKEN)){
+		if (!IsValidTokenModelCheckForAdd(tokenInRegRecord, tokenInRecord, tokenOutRegRecord, tokenOutRecord, state, addtokenmodel))
+			return false;
+	} 
+	else{
+		if (!IsValidTokenModelCheck(tokenInRegRecord, tokenInRecord, tokenOutRegRecord, tokenOutRecord, state))
+			return false;
+	}
+	
 
 	if (!IsValidIPCModelCheck(tx, ipcInOwnerRecord, ipcInAuthorRecord, ipcOutOwnerRecord, ipcOutUniqueRecord, ipcOutAuthorRecord, state))
 		return false;
