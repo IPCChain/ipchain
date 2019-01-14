@@ -964,7 +964,8 @@ public:
 	bool CreateAddTokenRegTransactionByStrReglabel(std::string& strReglabel, const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut,
 		std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true);
 	bool regaddressfirst(std::vector<COutput> &vAvailableCoins, const std::vector<CRecipientaddtoken>&);
-	bool CreateAddTokenRegTransaction(std::string& strReglabel, const std::vector<CRecipientaddtoken>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut, std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true);
+	bool setCoinswithaddress(std::vector<COutput> &vAvailableCoins,std::string address, std::set<std::pair<const CWalletTx*, unsigned int> >& setCoins,CAmount& nValueIn);
+	bool CreateAddTokenRegTransaction(std::string& strReglabel, const std::vector<CRecipientaddtoken>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut, std::string& strFailReason, std::string address, const CCoinControl *coinControl = NULL, bool sign = true);
 	//Create a token trade -- Support only for one address transaction.
 	bool CreateTokenTransaction(std::string& tokensymbol, uint64_t TokenValue, const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut,
 		std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true);
