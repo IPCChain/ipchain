@@ -3295,12 +3295,15 @@ bool CWallet::GetSymbolbalance(std::string& tokensymbol, uint64_t& value,std::st
         AvailableTokenCoins(vAvailableTokenCoins, true, coinControl);
     else
         AvailableUnionCoinsCOutput(unionaddress,vAvailableTokenCoins, true, coinControl,true,true);
+	std::cout << "GetSymbolbalance().vAvailableTokenCoins.size():" << vAvailableTokenCoins.size() << std::endl;
+
 	uint8_t txtype = -1;
 	std::string strsymbol = "";
 	uint64_t nvalue = 0;
 	bool isFind = false;
 	for (const auto& coin : vAvailableTokenCoins)
 	{
+		std::cout << "GetSymbolbalance().vAvailableTokenCoins.for:" << std::endl;
 		if (coin.tx->GetDepthInMainChain()<nTxConfirmTarget) //Not enough for eight confirmed filters
 			continue;
 		const CTxOut& coinvout = coin.tx->tx->vout[coin.i];
@@ -3317,24 +3320,28 @@ bool CWallet::GetSymbolbalance(std::string& tokensymbol, uint64_t& value,std::st
 		else if (txtype == TXOUT_ADDTOKEN)
 		{
 			strsymbol = coin.tx->tx->vout[coin.i].addTokenLabel.getTokenSymbol();
-			nvalue = coin.tx->tx->vout[coin.i].addTokenLabel.totalCount;
+			nvalue = coin.tx->tx->vout[coin.i].addTokenLabel.currentCount;
+			std::cout << "GetSymbolbalance().vAvailableTokenCoins.currentCount:" << coin.tx->tx->vout[coin.i].addTokenLabel.currentCount<< std::endl;
 		}
 		else if (txtype == 5)
 		{
 			strsymbol = coin.tx->tx->vout[coin.i].tokenLabel.getTokenSymbol();
 			nvalue = coin.tx->tx->vout[coin.i].tokenLabel.value;
+			std::cout << "GetSymbolbalance().vAvailableTokenCoins.value:" << coin.tx->tx->vout[coin.i].tokenLabel.value<< std::endl;
 		}
+		std::cout << "strsymbol:" << strsymbol << " tokensymbol:" << tokensymbol << std::endl;
 		if (strsymbol == tokensymbol) //Symbol symbol is consistent
 		{
+			std::cout << "strsymbol:" << strsymbol << "==tokensymbol:" << tokensymbol << std::endl;
 			isFind = true;
 			value += nvalue;
-			if (txtype == 4)   //There could be only one token registered
-				return isFind;
+		//	if (txtype == 4)   //There could be only one token registered
+		//		return isFind;
 		}
-		if (tokensymbol != strsymbol)
-			continue;
+		//if (tokensymbol != strsymbol)
+		//	continue;
 	}
-
+	std::cout << "GetSymbolbalance().nvalue:" << value << std::endl;
 	return isFind;
 }
 
@@ -3869,7 +3876,17 @@ bool CWallet::SelectTokenCoins(const std::vector<COutput>& vAvailableCoins, std:
 				setCoinsRet.insert(make_pair(out.tx, out.i));
 				return true;
 			}
-			return false;
+			if (out.tx->tx->vout[out.i].addTokenLabel.currentCount < tempValue)
+			{
+				setCoinsRet.insert(make_pair(out.tx, out.i));
+				tempValue = tempValue - out.tx->tx->vout[out.i].addTokenLabel.currentCount;
+			}
+			else
+			{
+				setCoinsRet.insert(make_pair(out.tx, out.i));
+				return true;
+			}
+			//return false;
 		}
 		if (txtype == 5)
 		{
@@ -9400,6 +9417,7 @@ bool CWallet::CreateTokenTransaction(std::string& tokensymbol, uint64_t TokenVal
 			AvailableNormalCoins(vAvailableCoins, true, coinControl);
 			std::vector<COutput> vAvailableTokenCoins;
 			AvailableTokenCoins(vAvailableTokenCoins, true, coinControl);
+			std::cout << "CreateTokenTransaction.vAvailableTokenCoins.size:" << vAvailableTokenCoins.size() << std::endl;
 
 			nFeeRet = 0;
 			// Start with no fee and loop until there is enough fee
@@ -9601,6 +9619,7 @@ bool CWallet::CreateTokenTransaction(std::string& tokensymbol, uint64_t TokenVal
 				{
 					memcpy((char*)(stokenlabel.TokenSymbol), (char*)(tokensymbol.c_str()), sizeof(stokenlabel.TokenSymbol));
 					stokenlabel.value = TotalvalueVin - TokenValue;
+					std::cout << "TotalvalueVin:" << TotalvalueVin << " TokenValue:" << TokenValue << std::endl;
 					stokenlabel.accuracy = tokenlabel.accuracy;
 
 					if (stokenlabel.value > 0)
@@ -14673,6 +14692,7 @@ bool CWallet::regaddressfirst(std::vector<COutput> &vAvailableCoins, const std::
 		}
 		if (vecSend[0].scriptPubKey == address){
 			findaddress = true;
+			std::cout << "regaddressfirst:" << vAvailableCoins.size() << " needswap:" << needswap << " i:" << i << std::endl;
 			if (needswap < vAvailableCoins.size() && needswap < i){
 				swap(vAvailableCoins[needswap], vAvailableCoins[i]);
 				needswap++;
@@ -14681,8 +14701,35 @@ bool CWallet::regaddressfirst(std::vector<COutput> &vAvailableCoins, const std::
 	}
 	return findaddress;
 }
-
-bool CWallet::CreateAddTokenRegTransaction(std::string& strReglabel, const std::vector<CRecipientaddtoken>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut, std::string& strFailReason, const CCoinControl *coinControl /*= NULL*/, bool sign /*= true*/)
+bool CWallet::setCoinswithaddress(std::vector<COutput> &vAvailableCoins,
+	std::string address, set<pair<const CWalletTx*, unsigned int> >& setCoins,
+	CAmount& nValueIn){
+	int needswap = -1;
+	for (int i = 0; i < vAvailableCoins.size(); i++){
+		const CTxOut& txout = vAvailableCoins[i].tx->tx->vout[vAvailableCoins[i].i];
+		if (voutFindAddress(txout, address)){
+			needswap = i;
+			break;
+		}
+	}
+	if (needswap < 0){
+		return false;
+	}
+	bool setCoinsfindaddress = false;
+	BOOST_FOREACH(auto &coin ,setCoins){
+		const CTxOut& txout = coin.first->tx->vout[coin.second];
+		if (voutFindAddress(txout, address)){
+			setCoinsfindaddress = true;
+			break;
+		}
+	}
+	if (!setCoinsfindaddress&&needswap>=0){
+		setCoins.insert(make_pair(vAvailableCoins[needswap].tx, vAvailableCoins[needswap].i));
+		nValueIn += vAvailableCoins[needswap].tx->tx->vout[vAvailableCoins[needswap].i].nValue;
+	}
+	return true;;
+}
+bool CWallet::CreateAddTokenRegTransaction(std::string& strReglabel, const std::vector<CRecipientaddtoken>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut, std::string& strFailReason, std::string address, const CCoinControl *coinControl /*= NULL*/, bool sign /*= true*/)
 {
 	nFeeRet = 0;
 	CAmount nValue = 0;
@@ -14805,9 +14852,26 @@ bool CWallet::CreateAddTokenRegTransaction(std::string& strReglabel, const std::
 		{
 			std::vector<COutput> vAvailableCoins;
 			AvailableNormalCoins(vAvailableCoins, true, coinControl);
-			if (!regaddressfirst(vAvailableCoins, vecSend)){
-				strFailReason = _("Regaddress error or insufficient funds");
-				return false;
+			//if (!regaddressfirst(vAvailableCoins, vecSend)){
+			//	strFailReason = _("Regaddress insufficient funds");
+			//	return false;
+			//}
+			if (vAvailableCoins.size() > 0){
+				const CTxOut& txout = vAvailableCoins[0].tx->tx->vout[vAvailableCoins[0].i];
+				CScript script = txout.scriptPubKey;
+				txnouttype typeRet;
+				std::vector<CTxDestination> prevdestes;
+				int nRequiredRet;
+				std::string address;
+				bool fValidAddress = ExtractDestinations(script, typeRet, prevdestes, nRequiredRet);
+				if (fValidAddress){
+					BOOST_FOREACH(CTxDestination &prevdest, prevdestes){
+						CBitcoinAddress add(prevdest);
+						address = add.ToString();
+						break;
+					}
+				}
+				std::cout << "vAvailableCoins[0]:" << " address:" << address << std::endl;
 			}
 			nFeeRet = 0;
 			// Start with no fee and loop until there is enough fee
@@ -14843,6 +14907,11 @@ bool CWallet::CreateAddTokenRegTransaction(std::string& strReglabel, const std::
 					strFailReason = _("Insufficient funds");
 					return false;
 				}
+				if (!setCoinswithaddress(vAvailableCoins,address,setCoins,nValueIn)){
+					strFailReason = _("Regaddress insufficient funds");
+					return false;
+				}
+				std::cout << "setCoins size:" << setCoins.size() << std::endl;
 				bool bFindChangScp = false;
 				CScript scriptChangeFind;
 				for (const auto& pcoin : setCoins)
