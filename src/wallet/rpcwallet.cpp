@@ -2424,7 +2424,8 @@ UniValue ipcaddtokenregtoaddress(const JSONRPCRequest& request)
 }
 
 //Tokens Reg Transaction
-static void AddTokenRegSendMoney(std::string strReglabel, const std::vector<CRecipientaddtoken>& vecsend, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew)
+static void AddTokenRegSendMoney(std::string strReglabel, const std::vector<CRecipientaddtoken>& vecsend,
+	CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew, std::string address)
 {
 	CAmount curBalance = pwalletMain->GetBalance();
 
@@ -2445,7 +2446,7 @@ static void AddTokenRegSendMoney(std::string strReglabel, const std::vector<CRec
 	std::string strError;
 	int nChangePosRet = -1;
 
-	if (!pwalletMain->CreateAddTokenRegTransaction(strReglabel, vecsend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError)) {
+	if (!pwalletMain->CreateAddTokenRegTransaction(strReglabel, vecsend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, address)) {
 		if (!fSubtractFeeFromAmount && nValue + nFeeRequired > curBalance)
 			strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
 		throw JSONRPCError(RPC_WALLET_ERROR, strError);
@@ -2545,7 +2546,7 @@ UniValue addtokenregtoaddress(const JSONRPCRequest& request)
 
 	EnsureWalletIsUnlocked();
 
-	AddTokenRegSendMoney(strReglabel,vecSend ,nAmount, fSubtractFeeFromAmount, wtx);
+	AddTokenRegSendMoney(strReglabel, vecSend, nAmount, fSubtractFeeFromAmount, wtx, address.ToString());
 
 	return wtx.GetHash().GetHex();
 }
