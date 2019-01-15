@@ -2460,7 +2460,65 @@ static void AddTokenRegSendMoney(std::string strReglabel, const std::vector<CRec
 	
 }
 
-
+UniValue getaddtokeninfobysymbol(const JSONRPCRequest& request)
+{
+	if (request.fHelp || request.params.size() <1 || request.params.size() >1)
+		throw runtime_error(
+		"getaddtokeninfobysymbol \"tokensymbol\"  \n"
+		"\nReturns the tokeninfo for an tokensymbol (requires tokensymbol to be enabled).\n"
+		"\nArguments:\n"
+		"{\n"
+		"      \"tokensymbol\"  (string) The tokensymbol encoded tokenTx\n"
+		"}\n"
+		"\nResult:\n"
+		"{\n"
+		" \"tokenSymbol\"    (uint8_t[9]) tokensymbol.\n"
+		" \"accuracy\"       (uint8_t) accuracy.\n"
+		" \"tokenhash\"      (uint128) MD5 tokenhash.\n"
+		" \"addmode\"        (uint8_t) uint8_t.\n"
+		" \"version\"        (uint8_t) version.\n"
+		" \"label\"          (uint8_t[17]) label.\n"
+		" \"totalCount\"     (uint64_t) totalCount.\n"
+		" \"currentCount\"   (uint64_t) currentCount.\n"
+		" \"issueDate\"      (uint32_t) issueDate.\n"
+		" \"height\"         (uint64_t) height.\n"
+		" \"extendinfo\"     (string) extendinfo.\n"
+		" \"m_txid\"         (string) m_txid.\n"
+		" \"m_vout\"         (uint64_t) m_vout.\n"
+		" \"address\"        (string) address.\n"
+		"}\n"
+		"\nExamples:\n"
+		+ HelpExampleCli("getaddtokeninfobysymbol", "'{\"tokensymbol\": [\"1rJX\"]}'")
+		+ HelpExampleRpc("getaddtokeninfobysymbol", "{\"tokensymbol\": [\"1rJX\"]}")
+		);
+	std::string tokensymbol = request.params[0].get_str();
+	UniValue resultarr(UniValue::VARR);
+	if (!tokenDataMap.count(tokensymbol))
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "this tokensymbol has no TokenReg");
+	const TokenReg& tokenreg = tokenDataMap[tokensymbol];
+	if (tokenreg.m_tokentype != TXOUT_ADDTOKEN)
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "this tokensymbol type is not addtokenreg");
+	BOOST_FOREACH(const AddTokenReg& addtokenreg, tokenreg.m_addTokenLabel){
+		UniValue result(UniValue::VOBJ);
+		AddTokenLabel m_addTokenLabel;
+		result.push_back(Pair("tokenSymbol", addtokenreg.m_addTokenLabel.getTokenSymbol()));
+		result.push_back(Pair("accuracy", addtokenreg.m_addTokenLabel.accuracy));
+		result.push_back(Pair("tokenhash", addtokenreg.m_addTokenLabel.hash.GetHex()));
+		result.push_back(Pair("addmode", addtokenreg.m_addTokenLabel.addmode));
+		result.push_back(Pair("version", addtokenreg.m_addTokenLabel.version));
+		result.push_back(Pair("label", addtokenreg.m_addTokenLabel.getTokenLabel()));
+		result.push_back(Pair("totalCount", ValueFromTCoins(addtokenreg.m_addTokenLabel.totalCount, (int)addtokenreg.m_addTokenLabel.accuracy)));
+		result.push_back(Pair("currentCount", ValueFromTCoins(addtokenreg.m_addTokenLabel.currentCount, (int)addtokenreg.m_addTokenLabel.accuracy)));
+		result.push_back(Pair("regtime", addtokenreg.m_addTokenLabel.issueDate));
+		result.push_back(Pair("height", addtokenreg.m_addTokenLabel.height));
+		result.push_back(Pair("extendinfo", addtokenreg.m_addTokenLabel.extendinfo));
+		result.push_back(Pair("m_txid", addtokenreg.m_txid));
+		result.push_back(Pair("m_vout", addtokenreg.m_vout));
+		result.push_back(Pair("address", addtokenreg.address));
+		resultarr.push_back(result);
+	}
+	return resultarr;
+}
 
 UniValue addtokenregtoaddress(const JSONRPCRequest& request)
 {
@@ -4350,7 +4408,7 @@ void ListTransactionsToken(const std::string& strtokensymbol,const CWalletTx& wt
 	list<COutputEntryToken> listSent;
 
 	wtx.GetAmountsToken(strtokensymbol,listReceived, listSent, nFee, strSentAccount, filter);
-
+	std::cout << "listSent " << listSent.size() << " listReceived " << listReceived.size() << std::endl;
 	bool fAllAccounts = (strAccount == string("*"));
 	bool involvesWatchonly = wtx.IsFromMe(ISMINE_WATCH_ONLY);
 
@@ -6872,19 +6930,27 @@ UniValue listunspenttokenbysymbol(const JSONRPCRequest& request)
 	assert(pwalletMain != NULL);
 	LOCK2(cs_main, pwalletMain->cs_wallet);
 	pwalletMain->AvailableTokenCoins(vecOutputs, true, NULL, true);
+	std::cout << "AvailableTokenCoins size " << vecOutputs.size() << std::endl;
+	std::cout << "setAddress size " << setAddress.size() << std::endl;
 	BOOST_FOREACH(const COutput& out, vecOutputs) {
+		std::cout << "out.nDepth " << out.nDepth << std::endl;
 		if (out.nDepth < nMinDepth || out.nDepth > nMaxDepth)
 			continue;
-
+		
+		std::cout << "nTxConfirmTarget " << nTxConfirmTarget << std::endl;
 		if (out.nDepth < nTxConfirmTarget)
 			continue;
+		
 		std::string strsymbol = out.GetTokenSymbol();
+		std::cout << "tokensymbol " << tokensymbol << strsymbol << std::endl;
 		if (tokensymbol != strsymbol)
 			continue;
+	
 		CTxDestination address;
 		const CScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
 		bool fValidAddress = ExtractDestination(scriptPubKey, address);
-
+		
+		std::cout << "setAddress size " << setAddress.begin()->ToString() << " address:" << CBitcoinAddress(address).ToString() << std::endl;
 		if (setAddress.size() && (!fValidAddress || !setAddress.count(address)))
 			continue;
 
@@ -7546,9 +7612,12 @@ static const CRPCCommand commands[] =
     { "wallet", "ipcauthortoaddresswithtxlabel", &ipcauthortoaddresswithtxlabel, false, { "txid", "index", "address", "ipclabel" } },
     { "hide",				"IPCTokenRegToAddress",		&ipctokenregtoaddress,		false, { "address", "tokenlabel" } },
     { "wallet",				"ipctokenregtoaddress",		&ipctokenregtoaddress,		false, { "address", "tokenlabel" } },
+
 	{ "wallet", "ipcaddtokenregtoaddress", &ipcaddtokenregtoaddress, false, { "address", "tokenlabel" } },
 	{ "wallet", "addtokenregtoaddress", &addtokenregtoaddress, false, { "address", "tokenlabel" ,"addtokenreginfo"} },
-    { "hide",				"IPCTokenSendToAddress",	&ipctokensendtoaddress,		false, { "tokensymbol", "address",  "value" } },
+	{ "hide", "getaddtokeninfobysymbol", &getaddtokeninfobysymbol, false, { "tokensymbol" } },
+
+	{ "hide",				"IPCTokenSendToAddress",	&ipctokensendtoaddress,		false, { "tokensymbol", "address",  "value" } },
     { "wallet",				"ipctokensendtoaddress",	&ipctokensendtoaddress,		false, { "tokensymbol", "address",  "value" } },
     { "hide",				"listunspentNormal",		&listunspentnormal,			false, { "minconf", "maxconf", "addresses", "include_unsafe" } },
     { "wallet",				"listunspentnormal",		&listunspentnormal,			false, { "minconf", "maxconf", "addresses", "include_unsafe" } },
