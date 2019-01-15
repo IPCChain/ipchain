@@ -1954,6 +1954,7 @@ void CWalletTx::GetAmountsIP(int IPtype, list<COutputEntryIP>& listReceived,
 void CWalletTx::GetAmountsToken(const std::string& strtokensymbol, list<COutputEntryToken>& listReceived,
 	list<COutputEntryToken>& listSent, CAmount& nFee, string& strSentAccount, const isminefilter& filter) const
 {
+	std::cout << "GetAmountsToken"  << std::endl;
 	nFee = 0;
 	listReceived.clear();
 	listSent.clear();
@@ -1976,7 +1977,10 @@ void CWalletTx::GetAmountsToken(const std::string& strtokensymbol, list<COutputE
 	uint8_t txtp = tx->GetTxType(); //Get the type of transaction
 	//The change in ipchain trading last Vout
 	// Sent/received.
+	std::cout << "hash " << tx->GetHash().ToString() << std::endl;
+	std::cout << "txtp " << (int)txtp<< std::endl;
 	unsigned int nSize = tx->vout.size();
+	std::cout << "nSize " << (int)nSize << std::endl;
 	for (unsigned int i = 0; i < nSize; ++i)
 	{
 		const CTxOut& txout = tx->vout[i];
@@ -1985,12 +1989,14 @@ void CWalletTx::GetAmountsToken(const std::string& strtokensymbol, list<COutputE
 			continue;
 		if (txtype != TXOUT_TOKENREG && txtype != TXOUT_TOKEN && txtype != TXOUT_ADDTOKEN)
 			continue;
+		std::cout << "TXOUT_ADDTOKEN " << std::endl;
 		isminetype fIsMine = pwallet->IsMine(txout);
 		// Only need to handle txouts if AT LEAST one of these is true:
 		//   1) they debit from us (sent)
 		//   2) the output is to us (received)
 		if (nDebit > 0)
         {
+			std::cout << pwallet->IsChange(txout) << isFindtxChange << nindex <<i<< std::endl;
 			// Don't report 'change' txouts
 			if (pwallet->IsChange(txout))
 				continue;
@@ -2028,10 +2034,12 @@ void CWalletTx::GetAmountsToken(const std::string& strtokensymbol, list<COutputE
 			accuracy = txout.addTokenLabel.accuracy;
 			tokenvalue = txout.addTokenLabel.currentCount;
 		}
+		std::cout << "strsymbol:" << strsymbol << " strtokensymbol:" << strtokensymbol << std::endl;
 		if (strsymbol != strtokensymbol)
 			continue;
 		COutputEntryToken output = { address, txout.nValue, (int)i, txtype, strsymbol ,accuracy,tokenvalue};
 		// If we are debited by the transaction, add the output as a "sent" entry
+		std::cout << "push_back" << std::endl;
 		if (ntokenDebit > 0)
 			listSent.push_back(output);
 
@@ -3475,6 +3483,23 @@ void CWallet::UpdateTokenBalanceList( )
 	}
 	return;
 }
+bool CWallet::checkVoutAddTokenCanSpend(const CTxOut& vout)const
+{
+	if (vout.txType == TXOUT_ADDTOKEN){
+		if (vout.addTokenLabel.issueDate != 0 && vout.addTokenLabel.issueDate > chainActive.Tip()->GetBlockTime())
+			return false;
+			//return state.DoS(100, false, REJECT_INVALID, "Token-reg-starttime-is-up-yet");
+		std::cout << "checkVoutAddTokenCanSpend" << std::endl;
+		std::cout << "vout.addTokenLabel.height:" << vout.addTokenLabel.height << std::endl;
+		std::cout << "chainActive.Height():" << chainActive.Height()<< std::endl;
+		if (vout.addTokenLabel.height > chainActive.Height())
+			return false;
+			//return state.DoS(100, false, REJECT_INVALID, "Token-reg-height-is-up-yet");
+		return true;
+	}
+	else
+		return false;
+}
 void CWallet::AvailableTokenCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const CCoinControl *coinControl, bool fIncludeZeroValue) const
 {
 	vCoins.clear();
@@ -3538,7 +3563,7 @@ void CWallet::AvailableTokenCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, 
 				if (!(IsSpent(wtxid, i)) && mine != ISMINE_NO &&
 					!IsLockedCoin((*it).first, i) && (pcoin->tx->vout[i].nValue >= 0 || fIncludeZeroValue) &&
 					(!coinControl || !coinControl->HasSelected() || coinControl->fAllowOtherInputs || coinControl->IsSelected(COutPoint((*it).first, i)))&&
-					(pcoin->tx->vout[i].txType == TXOUT_TOKEN || pcoin->tx->vout[i].txType == TXOUT_TOKENREG || pcoin->tx->vout[i].txType == TXOUT_ADDTOKEN))//
+					(pcoin->tx->vout[i].txType == TXOUT_TOKEN || pcoin->tx->vout[i].txType == TXOUT_TOKENREG || checkVoutAddTokenCanSpend(pcoin->tx->vout[i])))//
 					vCoins.push_back(COutput(pcoin, i, nDepth,
 					((mine & ISMINE_SPENDABLE) != ISMINE_NO) ||
 					(coinControl && coinControl->fAllowWatchOnly && (mine & ISMINE_WATCH_SOLVABLE) != ISMINE_NO),
@@ -12232,7 +12257,7 @@ bool CWallet::GetChangeIndex(const CTransaction& tx, int& index) const
 		preindex = tvin.prevout.n;
 		if (txtp == TXOUT_NORMAL)
 			break;
-		else if (txtp == TXOUT_TOKENREG || txtp == TXOUT_IPCOWNER)
+		else if (txtp == TXOUT_TOKENREG || txtp == TXOUT_ADDTOKEN || txtp == TXOUT_IPCOWNER)
 		{
 			index = -1;
 			return true;
@@ -14503,7 +14528,7 @@ void CWallet::AvailableUnionCoinsCOutput(std::string& straddress, std::vector<CO
 				if (!(IsSpent(wtxid, i)) &&
 					!IsLockedCoin((*it).first, i) && (pcoin->tx->vout[i].nValue > 0 || fIncludeZeroValue) &&
 					(!coinControl || !coinControl->HasSelected() || coinControl->fAllowOtherInputs || coinControl->IsSelected(COutPoint((*it).first, i))) &&
-					((!isToken && pcoin->tx->vout[i].txType == TXOUT_NORMAL) || (isToken && (pcoin->tx->vout[i].txType == TXOUT_TOKENREG || pcoin->tx->vout[i].txType == TXOUT_TOKEN || pcoin->tx->vout[i].txType == TXOUT_ADDTOKEN)))){
+					((!isToken && pcoin->tx->vout[i].txType == TXOUT_NORMAL) || (isToken && (pcoin->tx->vout[i].txType == TXOUT_TOKENREG || pcoin->tx->vout[i].txType == TXOUT_TOKEN || checkVoutAddTokenCanSpend(pcoin->tx->vout[i]))))){
 
 					vCoins.push_back(COutput(pcoin, i, nDepth,
 					((mine & ISMINE_SPENDABLE) != ISMINE_NO) ||
