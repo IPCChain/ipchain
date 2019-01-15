@@ -379,8 +379,8 @@ bool CVerifyDB:: FlushICMToDisk()
 				ttTokenRegDataadd.m_addTokenLabel.accuracy = addTokenLabel.m_addTokenLabel.accuracy;
 				ttTokenRegDataadd.m_addTokenLabel.extendinfo = addTokenLabel.m_addTokenLabel.extendinfo;
 				std::cout << "WriteToDisk:currentCount:" << ttTokenRegDataadd.m_addTokenLabel.currentCount << std::endl;
-				if (!rwSerTokenDataAdd.WriteToDisk(ttTokenRegDataadd, FileTokenDataName)){
-					LogPrintf(" [FlushICMToDisk] : [WriteToDisk : %s] ,return erro! \n", FileTokenDataName);
+				if (!rwSerTokenDataAdd.WriteToDisk(ttTokenRegDataadd, FileAddTokenDataName)){
+					LogPrintf(" [FlushICMToDisk] : [WriteToDisk : %s] ,return erro! \n", FileAddTokenDataName);
 					return false;
 				}
 			}
@@ -429,7 +429,7 @@ bool CVerifyDB::LoadICMFromDisk()
 			ttTSMapData.setNull();
 			if (!rwSerTS.ReadFromDisk(ttTSMapData, nSeek, TokenSymCkFileName))
 			{
-				LogPrintf(" [LoadICMFromDisk]::[ReadFromDisk£º%s ]  return false! \n", TokenSymCkFileName);
+				LogPrintf(" [LoadICMFromDisk]::[ReadFromDisk: %s ]  return false! \n", TokenSymCkFileName);
 				return false;
 			}
 			pIPCCheckMaps->TokenSymbolMap.insert(std::make_pair(ttTSMapData.tokensymbol, std::make_pair(ttTSMapData.txid, ttTSMapData.bstate)));
@@ -450,7 +450,7 @@ bool CVerifyDB::LoadICMFromDisk()
 			ttTHMapData.setNull();
 			if (!rwSerTH.ReadFromDisk(ttTHMapData, nSeek, TokenHashCkFileName))
 			{
-				LogPrintf(" [LoadICMFromDisk]::[ReadFromDisk£º%s ]  return false! \n", TokenHashCkFileName);
+				LogPrintf(" [LoadICMFromDisk]::[ReadFromDisk: %s ]  return false! \n", TokenHashCkFileName);
 				return false;
 			}
 			pIPCCheckMaps->TokenHashMap.insert(std::make_pair(ttTHMapData.hash, std::make_pair(ttTHMapData.txid, ttTHMapData.bstate)));
@@ -470,7 +470,7 @@ bool CVerifyDB::LoadICMFromDisk()
 			ttIHMapData.setNull();
 			if (!rwSerIH.ReadFromDisk(ttIHMapData, nSeek, IPCHashCkFileName))
 			{
-				LogPrintf(" [LoadICMFromDisk]::[ReadFromDisk£º%s ]  return false! \n", IPCHashCkFileName);
+				LogPrintf(" [LoadICMFromDisk]::[ReadFromDisk: %s ]  return false! \n", IPCHashCkFileName);
 				return false;
 			}
 			pIPCCheckMaps->IPCHashMap.insert(std::make_pair(ttIHMapData.hash, std::make_pair(ttIHMapData.txid, ttIHMapData.bstate)));
@@ -491,7 +491,7 @@ bool CVerifyDB::LoadICMFromDisk()
 			ttTokenRegData.SetNull();
 			if (!rwSerTD.ReadFromDisk(ttTokenRegData, nSeek, FileTokenDataName))
 			{
-				LogPrintf(" [LoadICMFromDisk]::[ReadFromDisk£º%s ]  return false! \n", FileTokenDataName);
+				LogPrintf(" [LoadICMFromDisk]::[ReadFromDisk: %s ]  return false! \n", FileTokenDataName);
 				return false;
 			}
 			tokenDataMap.insert(std::make_pair(ttTokenRegData.getTokenSymbol(), ttTokenRegData));
@@ -512,7 +512,7 @@ bool CVerifyDB::LoadICMFromDisk()
 			ttaddTokenRegData.SetNull();
 			if (!rwSerTD.ReadFromDisk(ttaddTokenRegData, nSeek, FileAddTokenDataName))
 			{
-				LogPrintf(" [LoadICMFromDisk]::[ReadFromDisk£º%s ]  return false! \n", FileAddTokenDataName);
+				LogPrintf(" [LoadICMFromDisk]::[ReadFromDisk: %s ]  return false! \n", FileAddTokenDataName);
 				return false;
 			}
 			auto tempaddTokenDataMap = tokenDataMap.find(ttaddTokenRegData.m_addTokenLabel.getTokenSymbol());
@@ -600,7 +600,25 @@ void PushTxToTokenDataMap(const CTransaction& tx, std::map<std::string, TokenReg
 					}
 				}
 				if (!address.empty()){
-					pTokenDataMap->insert(std::make_pair(txout.addTokenLabel.getTokenSymbol(), TokenReg(txout.addTokenLabel, tx.GetHash().ToString().c_str(), i, address)));
+					std::string tokensymbol = txout.addTokenLabel.getTokenSymbol();
+					auto itor = pTokenDataMap->find(tokensymbol);
+					if (itor != pTokenDataMap->end()){
+						std::vector<AddTokenReg>&m_addTokenLabel = itor->second.m_addTokenLabel;
+						BOOST_FOREACH(AddTokenReg& m_addtokenreg, m_addTokenLabel){
+							if (m_addtokenreg.m_txid == tx.GetHash().ToString() && m_addtokenreg.m_vout == i)
+								continue;
+						}
+						AddTokenReg addTokenLabel;
+						addTokenLabel.address = address;
+						addTokenLabel.m_txid = tx.GetHash().ToString();
+						addTokenLabel.m_vout = i;
+						addTokenLabel.m_addTokenLabel = txout.addTokenLabel;
+						m_addTokenLabel.push_back(addTokenLabel);
+						
+					}
+					else{
+						pTokenDataMap->insert(std::make_pair(tokensymbol, TokenReg(txout.addTokenLabel, tx.GetHash().ToString().c_str(), i, address)));
+					}
 					std::cout << "pTokenDataMap->insert" << std::endl;
 				}
 		}
@@ -795,8 +813,9 @@ bool getTokenBalanceByAddress(std::string& address, std::string& tokensymbol,CAm
         if(!GetTransaction(uint256S(strtxid), mtx, Params().GetConsensus(), hashBlock, true))
             return false;
         //CMutableTransaction tx(*mtx);
-        if (mtx->vout[0].txType != 4 && mtx->vout[0].txType != 5) continue;
-        if (mtx->vout[0].tokenLabel.getTokenSymbol() == tokensymbol)
+		if (mtx->vout[0].txType != 4 && mtx->vout[0].txType != 5 &&mtx->vout[0].txType != TXOUT_ADDTOKEN) continue;
+       
+		if (mtx->vout[0].tokenLabel.getTokenSymbol() == tokensymbol)
             vecTxs.push_back(*mtx);
         else if (mtx->vout[0].tokenRegLabel.getTokenSymbol() == tokensymbol)
             regTxs.push_back(*mtx);
