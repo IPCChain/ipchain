@@ -549,7 +549,7 @@ bool addTokenClassCompare(const AddTokenLabel& token1, const AddTokenLabel& toke
 }
 bool manualIssuancStandard(const CTxOut& txout, CValidationState &state,
 	uint64_t& currentTotalAmount, std::map<std::string,TokenReg>& tokenDataMaptemp,
-	std::string txid, int32_t voutIndex, std::string address)
+	std::string txid, int32_t voutIndex, std::string address, bool &txHaveChecked)
 {
 	auto itor = tokenDataMaptemp.find(txout.addTokenLabel.getTokenSymbol());
 	std::cout << "manualIssuancStandard" << std::endl;
@@ -565,7 +565,9 @@ bool manualIssuancStandard(const CTxOut& txout, CValidationState &state,
 					return state.DoS(100, false, REJECT_INVALID, "bad-Token-addTokenClassCompare");
 				}
 				if (addTokenLabel0.m_txid == txid &&addTokenLabel0.m_vout == voutIndex){
-					return state.DoS(100, false, REJECT_INVALID, "bad-Token-txvout-repeat");
+					txHaveChecked = true;
+					return true;
+					//return state.DoS(100, false, REJECT_INVALID, "bad-Token-txvout-repeat");
 				}
 				if (addTokenLabel0.address != address){
 					return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokenregaddress-notsame");
@@ -812,7 +814,7 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 
 			if (prev.addTokenLabel.issueDate != 0 && prev.addTokenLabel.issueDate > chainActive.Tip()->GetBlockTime())
 				return state.DoS(100, false, REJECT_INVALID, "Token-reg-starttime-is-up-yet");
-			if (prev.addTokenLabel.height >= chainActive.Height())
+			if (prev.addTokenLabel.height > chainActive.Height())
 				return state.DoS(100, false, REJECT_INVALID, "Token-reg-height-is-up-yet");
 
 			if (prev.addTokenLabel.accuracy != tokenDataMap[prev.addTokenLabel.getTokenSymbol()].getAccuracy() && fatheruraccy != prev.addTokenLabel.accuracy)
@@ -1214,13 +1216,19 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 
 			if (addtokenmodel == 1 && modetokensymbol && modetokenhash){
 				uint64_t currentTotalAmount = 0;
-				if (!manualIssuancStandard(txout, state, currentTotalAmount, tokenDataMap, tx.GetHash().ToString(), voutIndex, address)){
+				bool txHaveChecked = false;
+				if (!manualIssuancStandard(txout, state, currentTotalAmount, tokenDataMap, tx.GetHash().ToString(), voutIndex, address, txHaveChecked)){
 					//	||!manualIssuancStandard(txout, state, currentTotalAmount, newTokenDataMap, tx.GetHash().ToString(), voutIndex)){
 					return false;
+				}
+				if (txHaveChecked)
+				{
+					return true;
 				}
 				if (txout.addTokenLabel.currentCount > txout.addTokenLabel.totalCount - currentTotalAmount)
 					return state.DoS(100, false, REJECT_INVALID, "bad-Token-currentCount-beyond");
 			}
+			
 
 			if (!paddTokenLabel.getTokenSymbol().empty()){
 				if (1 == addtokenmodel)
