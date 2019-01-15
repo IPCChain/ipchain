@@ -824,7 +824,7 @@ public:
 	void AvailableNormalCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed = true, const CCoinControl *coinControl = NULL, bool fIncludeZeroValue = false) const;
 	void AvailableIPCCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed = true, const CCoinControl *coinControl = NULL, bool fIncludeZeroValue = false) const;
 	void AvailableTokenCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed = true, const CCoinControl *coinControl = NULL, bool fIncludeZeroValue = false) const;
-
+	bool checkVoutAddTokenCanSpend(const CTxOut& vout)const;
     bool GetSymbolbalance(std::string& tokensymbol, uint64_t& value,std::string unionaddress = ""/*, uint64_t nconfirmed = DEFAULT_TX_CONFIRM_TARGET*/);
 	void ListTokenBalance(std::map<std::string, uint64_t>& TokenList);
 	uint8_t GetAccuracyBySymbol(std::string& tokensymbol);
