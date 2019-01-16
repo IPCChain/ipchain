@@ -311,7 +311,7 @@ public:
 	std::string  extendinfo;
 
 	AddTokenLabel() { SetNull(); }
-	uint32_t size() const { return 1 + 1 + 4 + 8 + 16 + 16 + 4 + 8 + 8 + 1 + extendinfo.size(); };
+	uint32_t size() const { return 1 + 1 + 4 + 8 + hash.size() + 16 + 4 + 8 + 8 + 1 + extendinfo.size()+1; };
 
 
 	std::string getTokenSymbol() const { return std::string((char*)TokenSymbol); };
@@ -363,7 +363,7 @@ class AddTokenReg
 {
 public:
 	std::string m_txid;
-	int m_vout;
+	uint32_t m_vout;
 	std::string address;
 	AddTokenLabel m_addTokenLabel;
 	ADD_SERIALIZE_METHODS;
@@ -374,7 +374,7 @@ public:
 		READWRITE(address);
 		READWRITE(m_addTokenLabel);
 	}
-	int32_t size(){ return m_txid.size() + 4 + m_addTokenLabel.size(); }
+	int32_t size(){ return m_txid.size()+1 + sizeof(uint32_t)+address.size()+1 + m_addTokenLabel.size(); }
 	void SetNull() { m_addTokenLabel.SetNull(); m_vout = 0; }
 };
 class TokenReg
