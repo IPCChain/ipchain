@@ -552,7 +552,7 @@ bool manualIssuancStandard(const CTxOut& txout, CValidationState &state,
 	std::string txid, int32_t voutIndex, std::string address, bool &txHaveChecked)
 {
 	auto itor = tokenDataMaptemp.find(txout.addTokenLabel.getTokenSymbol());
-	std::cout << "manualIssuancStandard" << std::endl;
+	std::cout << "manualIssuancStandard getTokenSymbol:" << txout.addTokenLabel.getTokenSymbol() << std::endl;
 	if (itor != tokenDataMaptemp.end()){
 		std::cout << "manualIssuancStandard in" << std::endl;
 		if (itor->second.m_tokentype == 4){
@@ -585,8 +585,10 @@ bool manualIssuancStandard(const CTxOut& txout, CValidationState &state,
 			else
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokenDataMap-error");
 		}
-		else
+		else{
+			std::cout << " tokentype : " << itor->second.m_tokentype << std::endl;
 			return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokenDataMap-tokentype");
+		}
 	}
 	std::cout << "manualIssuancStandard end" << std::endl;
 	return true;
@@ -1120,10 +1122,13 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Label-contain-errvalue");
 
 			if (checkStr.empty())
-				return state.DoS(100, false, REJECT_INVALID, "Vout4-Hash-Symbol-empty");
+				return state.DoS(100, false, REJECT_INVALID, "Vout6-Hash-Symbol-empty");
 
 			if (txout.addTokenLabel.hash.GetHex().length() != 32)
-				return state.DoS(100, false, REJECT_INVALID, "Vout4-Hash-length-must-be-32");
+				return state.DoS(100, false, REJECT_INVALID, "Vout6-Hash-length-must-be-32");
+
+			if (txout.addTokenLabel.extendinfo.size() >= 256)
+				return state.DoS(100, false, REJECT_INVALID, "Vout6-extendinfo-length-must-less-256");
 
 			if (txout.addTokenLabel.issueDate < TOKEN_REGTIME_BOUNDARY)
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Reg-issueDate(Regtime)");
