@@ -286,7 +286,7 @@ std::string IPCHashCkFileName = std::string("IPCck");
 std::string TokenSymCkFileName = std::string("TSymbolck");
 std::string TokenHashCkFileName = std::string("THashck");
 std::string FileTokenDataName = std::string("TokenData");
-std::string FileAddTokenDataName = std::string("AddTokenData.ini");
+std::string FileAddTokenDataName = std::string("AddTokenData");
 
 //Write the Maps in memory to disk
 bool CVerifyDB:: FlushICMToDisk()
@@ -365,19 +365,33 @@ bool CVerifyDB:: FlushICMToDisk()
 			BOOST_FOREACH(AddTokenReg &addTokenLabel, TDit->second.m_addTokenLabel){
 				ttTokenRegDataadd.SetNull();
 				ttTokenRegDataadd.m_txid = addTokenLabel.m_txid;
+				LogPrintf(" [FlushICMToDisk] : [newTokenDataMap m_txid: %s] \n", ttTokenRegDataadd.m_txid);
 				ttTokenRegDataadd.m_vout = addTokenLabel.m_vout;
+				LogPrintf(" [FlushICMToDisk] : [newTokenDataMap m_vout: %d] \n", ttTokenRegDataadd.m_vout);
 				ttTokenRegDataadd.address = addTokenLabel.address;
+				LogPrintf(" [FlushICMToDisk] : [newTokenDataMap address: %s] \n", ttTokenRegDataadd.address);
 			    ttTokenRegDataadd.m_addTokenLabel.version = addTokenLabel.m_addTokenLabel.version;
+				LogPrintf(" [FlushICMToDisk] : [newTokenDataMap version: %d] \n", ttTokenRegDataadd.m_addTokenLabel.version);
 				ttTokenRegDataadd.m_addTokenLabel.addmode = addTokenLabel.m_addTokenLabel.addmode;
+				LogPrintf(" [FlushICMToDisk] : [newTokenDataMap addmode: %d] \n", ttTokenRegDataadd.m_addTokenLabel.addmode);
 				ttTokenRegDataadd.m_addTokenLabel.height = addTokenLabel.m_addTokenLabel.height;
+				LogPrintf(" [FlushICMToDisk] : [newTokenDataMap height: %d] \n", ttTokenRegDataadd.m_addTokenLabel.height);
 				memcpy((char*)(ttTokenRegDataadd.m_addTokenLabel.TokenSymbol), (char*)(addTokenLabel.m_addTokenLabel.TokenSymbol), sizeof(ttTokenRegDataadd.m_addTokenLabel.TokenSymbol));
+				LogPrintf(" [FlushICMToDisk] : [newTokenDataMap TokenSymbol: %d] \n", ttTokenRegDataadd.m_addTokenLabel.getTokenSymbol());
 				ttTokenRegDataadd.m_addTokenLabel.hash = addTokenLabel.m_addTokenLabel.hash;
+				LogPrintf(" [FlushICMToDisk] : [newTokenDataMap hash: %d] \n", ttTokenRegDataadd.m_addTokenLabel.hash.ToString());
 				memcpy((char*)(ttTokenRegDataadd.m_addTokenLabel.label), (char*)(TDit->second.getLabel()), sizeof(ttTokenRegDataadd.m_addTokenLabel.label));
+				LogPrintf(" [FlushICMToDisk] : [newTokenDataMap label: %d] \n", ttTokenRegDataadd.m_addTokenLabel.getTokenLabel());
 				ttTokenRegDataadd.m_addTokenLabel.issueDate = TDit->second.getIssueDate();
+				LogPrintf(" [FlushICMToDisk] : [newTokenDataMap issueDate: %d] \n", ttTokenRegDataadd.m_addTokenLabel.issueDate);
 				ttTokenRegDataadd.m_addTokenLabel.totalCount = addTokenLabel.m_addTokenLabel.totalCount;
+				LogPrintf(" [FlushICMToDisk] : [newTokenDataMap totalCount: %d] \n", ttTokenRegDataadd.m_addTokenLabel.totalCount);
 				ttTokenRegDataadd.m_addTokenLabel.currentCount = addTokenLabel.m_addTokenLabel.currentCount;
+				LogPrintf(" [FlushICMToDisk] : [newTokenDataMap currentCount: %d] \n", ttTokenRegDataadd.m_addTokenLabel.currentCount);
 				ttTokenRegDataadd.m_addTokenLabel.accuracy = addTokenLabel.m_addTokenLabel.accuracy;
+				LogPrintf(" [FlushICMToDisk] : [newTokenDataMap accuracy: %d] \n", ttTokenRegDataadd.m_addTokenLabel.accuracy);
 				ttTokenRegDataadd.m_addTokenLabel.extendinfo = addTokenLabel.m_addTokenLabel.extendinfo;
+				LogPrintf(" [FlushICMToDisk] : [newTokenDataMap extendinfo: %s] \n", ttTokenRegDataadd.m_addTokenLabel.extendinfo);
 				std::cout << "WriteToDisk:currentCount:" << ttTokenRegDataadd.m_addTokenLabel.currentCount << std::endl;
 				if (!rwSerTokenDataAdd.WriteToDisk(ttTokenRegDataadd, FileAddTokenDataName)){
 					LogPrintf(" [FlushICMToDisk] : [WriteToDisk : %s] ,return erro! \n", FileAddTokenDataName);
@@ -494,7 +508,7 @@ bool CVerifyDB::LoadICMFromDisk()
 				LogPrintf(" [LoadICMFromDisk]::[ReadFromDisk: %s ]  return false! \n", FileTokenDataName);
 				return false;
 			}
-			tokenDataMap.insert(std::make_pair(ttTokenRegData.getTokenSymbol(), ttTokenRegData));
+			tokenDataMap.insert(std::make_pair(ttTokenRegData.getTokenSymbol(), TokenReg(ttTokenRegData)));
 			nSeek += ttTokenRegData.size();
 		}
 	}
@@ -515,6 +529,7 @@ bool CVerifyDB::LoadICMFromDisk()
 				LogPrintf(" [LoadICMFromDisk]::[ReadFromDisk: %s ]  return false! \n", FileAddTokenDataName);
 				return false;
 			}
+			std::cout << "ReadFromDisk:getTokenSymbol:" << ttaddTokenRegData.m_addTokenLabel.getTokenSymbol() << std::endl;
 			auto tempaddTokenDataMap = tokenDataMap.find(ttaddTokenRegData.m_addTokenLabel.getTokenSymbol());
 			if (tempaddTokenDataMap == tokenDataMap.end()){
 				TokenReg tempTokenReg;
@@ -528,6 +543,7 @@ bool CVerifyDB::LoadICMFromDisk()
 			}
 			std::cout << "ReadFromDisk:currentCount:" << ttaddTokenRegData.m_addTokenLabel.currentCount << std::endl;
 			nSeek += ttaddTokenRegData.size();
+			std::cout << "nSeek:" << nSeek << " ttaddTokenRegData.size:" << ttaddTokenRegData.size() << " filesize:" << filesize << std::endl;
 		}
 	}
 	LogPrintf(" [LoadICMFromDisk]::load all! \n");
@@ -606,7 +622,7 @@ void PushTxToTokenDataMap(const CTransaction& tx, std::map<std::string, TokenReg
 						std::vector<AddTokenReg>&m_addTokenLabel = itor->second.m_addTokenLabel;
 						BOOST_FOREACH(AddTokenReg& m_addtokenreg, m_addTokenLabel){
 							if (m_addtokenreg.m_txid == tx.GetHash().ToString() && m_addtokenreg.m_vout == i)
-								continue;
+								return;
 						}
 						AddTokenReg addTokenLabel;
 						addTokenLabel.address = address;
