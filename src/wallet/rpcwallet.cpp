@@ -2460,11 +2460,11 @@ static void AddTokenRegSendMoney(std::string strReglabel, const std::vector<CRec
 	
 }
 
-UniValue getaddtokeninfobysymbol(const JSONRPCRequest& request)
+UniValue getaddtokenreginfobysymbol(const JSONRPCRequest& request)
 {
 	if (request.fHelp || request.params.size() <1 || request.params.size() >1)
 		throw runtime_error(
-		"getaddtokeninfobysymbol \"tokensymbol\"  \n"
+		"getaddtokenreginfobysymbol \"tokensymbol\"  \n"
 		"\nReturns the tokeninfo for an tokensymbol (requires tokensymbol to be enabled).\n"
 		"\nArguments:\n"
 		"{\n"
@@ -2488,8 +2488,8 @@ UniValue getaddtokeninfobysymbol(const JSONRPCRequest& request)
 		" \"address\"        (string) address.\n"
 		"}\n"
 		"\nExamples:\n"
-		+ HelpExampleCli("getaddtokeninfobysymbol", "'{\"tokensymbol\": [\"1rJX\"]}'")
-		+ HelpExampleRpc("getaddtokeninfobysymbol", "{\"tokensymbol\": [\"1rJX\"]}")
+		+ HelpExampleCli("getaddtokenreginfobysymbol", "\"tokensymbol\"")
+		+ HelpExampleRpc("getaddtokenreginfobysymbol", "\"tokensymbol\"")
 		);
 	std::string tokensymbol = request.params[0].get_str();
 	UniValue resultarr(UniValue::VARR);
@@ -2498,6 +2498,7 @@ UniValue getaddtokeninfobysymbol(const JSONRPCRequest& request)
 	const TokenReg& tokenreg = tokenDataMap[tokensymbol];
 	if (tokenreg.m_tokentype != TXOUT_ADDTOKEN)
 		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "this tokensymbol type is not addtokenreg");
+	
 	BOOST_FOREACH(const AddTokenReg& addtokenreg, tokenreg.m_addTokenLabel){
 		UniValue result(UniValue::VOBJ);
 		AddTokenLabel m_addTokenLabel;
@@ -2507,8 +2508,8 @@ UniValue getaddtokeninfobysymbol(const JSONRPCRequest& request)
 		result.push_back(Pair("addmode", addtokenreg.m_addTokenLabel.addmode));
 		result.push_back(Pair("version", addtokenreg.m_addTokenLabel.version));
 		result.push_back(Pair("label", addtokenreg.m_addTokenLabel.getTokenLabel()));
-		result.push_back(Pair("totalCount", ValueFromTCoins(addtokenreg.m_addTokenLabel.totalCount, (int)addtokenreg.m_addTokenLabel.accuracy)));
-		result.push_back(Pair("currentCount", ValueFromTCoins(addtokenreg.m_addTokenLabel.currentCount, (int)addtokenreg.m_addTokenLabel.accuracy)));
+		result.push_back(Pair("totalCount", addtokenreg.m_addTokenLabel.totalCount));
+		result.push_back(Pair("currentCount", addtokenreg.m_addTokenLabel.currentCount));
 		result.push_back(Pair("regtime", addtokenreg.m_addTokenLabel.issueDate));
 		result.push_back(Pair("height", addtokenreg.m_addTokenLabel.height));
 		result.push_back(Pair("extendinfo", addtokenreg.m_addTokenLabel.extendinfo));
@@ -7615,7 +7616,7 @@ static const CRPCCommand commands[] =
 
 	{ "wallet", "ipcaddtokenregtoaddress", &ipcaddtokenregtoaddress, false, { "address", "tokenlabel" } },
 	{ "wallet", "addtokenregtoaddress", &addtokenregtoaddress, false, { "address", "tokenlabel" ,"addtokenreginfo"} },
-	{ "hide", "getaddtokeninfobysymbol", &getaddtokeninfobysymbol, false, { "tokensymbol" } },
+	{ "hide", "getaddtokenreginfobysymbol", &getaddtokenreginfobysymbol, false, { "tokensymbol" } },
 
 	{ "hide",				"IPCTokenSendToAddress",	&ipctokensendtoaddress,		false, { "tokensymbol", "address",  "value" } },
     { "wallet",				"ipctokensendtoaddress",	&ipctokensendtoaddress,		false, { "tokensymbol", "address",  "value" } },
