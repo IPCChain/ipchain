@@ -57,9 +57,9 @@ public:
 			for (int i = cursize - 1; i >= cursize - othersize; i--)
 			{
 				if (data[i] > 0)
-					return 1; //当前数字高位比较大
+					return 1; //The current high digit ratio is large
 			}
-			//位数正常，正常比较
+			//Number normal, normal comparison
 			for (int i = cursize - othersize - 1; i >= 0; i--)
 			{
 				if (data[i] == other.data[i])
@@ -79,9 +79,9 @@ public:
 			for (int i = othersize - 1; i >= othersize - cursize; i--)
 			{
 				if (other.data[i] > 0)
-					return -1; //另一个数字高位比较大
+					return -1; //The other number is higher.
 			}
-			//位数正常，正常比较
+			//Number normal, normal comparison
 			for (int i = othersize - cursize - 1; i >= 0; i--)
 			{
 				if (data[i] == other.data[i])
