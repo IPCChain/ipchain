@@ -7670,7 +7670,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "sendtomultiaddress",       &sendtomultiaddress,       true,   {"toaddress", "fromaddress", "amount", "comment", "comment_to", "subtractfeefromamount" } },
 	{ "wallet",             "signmultitx",              &signmultitx,              true,   { "strtx"} },
   //forcross   **********begin
-/*    { "wallet",				"unionsendtokenmany",		&unionsendtokenmany,	   true,	{ "fromaddress", "tokensymbol", "amounts" ,"needsign","maxvinsize","minvinsize","minconfirmation"} },
+    { "wallet",				"unionsendtokenmany",		&unionsendtokenmany,	   true,	{ "fromaddress", "tokensymbol", "amounts" ,"needsign","maxvinsize","minvinsize","minconfirmation"} },
     { "wallet",             "getuniontokenbalance",     &getuniontokenbalance,     true,   { "address","tokensymbol"} },
     { "wallet",             "getunionsign",             &getunionsign,             true,   { "strtx"} },
     { "wallet",             "getunionsignwithoutnetwork",&getunionsignwithoutnetwork,true,{ "strtx" ,"inputs"} },
@@ -7689,7 +7689,7 @@ static const CRPCCommand commands[] =
     { "wallet",  "uniongettxidsfromtxrecord",    &uniongettxidsfromtxrecord,   true,   { "unionaddress","minblocknum","maxblocknum","tokensymbol"} },
     { "wallet",             "getuniontxvininfo",            &getuniontxvininfo,             true,   { "strtx"} },
     //**********end
-*/
+
 
 
 };
