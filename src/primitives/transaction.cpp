@@ -209,7 +209,7 @@ uint64_t CTxOut::GetTokenvalue() const{
     else if (txType == TXOUT_ADDTOKEN)
 	{
 		return addTokenLabel.currentCount;
-	}    return uint64_t(0);
+	}  
     return uint64_t(0);}
 
 uint8_t CTxOut::getTokenaccuracy() const
@@ -225,7 +225,8 @@ uint8_t CTxOut::getTokenaccuracy() const
 	else if (txType == TXOUT_ADDTOKEN)
 	{
 		return addTokenLabel.accuracy;
-	}	return uint8_t(0);
+	}
+	return uint8_t(0);
 }
 
 
