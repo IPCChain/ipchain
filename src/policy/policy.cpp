@@ -1127,8 +1127,15 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 			if (txout.addTokenLabel.hash.GetHex().length() != 32)
 				return state.DoS(100, false, REJECT_INVALID, "Vout6-Hash-length-must-be-32");
 
-			if (txout.addTokenLabel.extendinfo.size() >= 256)
-				return state.DoS(100, false, REJECT_INVALID, "Vout6-extendinfo-length-must-less-256");
+			if (txout.addTokenLabel.extendinfo.size() > 187)
+				return state.DoS(100, false, REJECT_INVALID, "Vout6-extendinfo-length-must-less-187");
+
+			if (txout.labelLen > 255)
+				return state.DoS(100, false, REJECT_INVALID, "Vout6-addTokenLabel-length-out-of-bounds");
+
+			if (txout.addTokenLabel.size() != txout.labelLen)
+				return state.DoS(100, false, REJECT_INVALID, "Vout6-addTokenLabel-length-not-feet-labelLen");
+
 
 			if (txout.addTokenLabel.issueDate < TOKEN_REGTIME_BOUNDARY)
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Reg-issueDate(Regtime)");
