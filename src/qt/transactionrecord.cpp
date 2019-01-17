@@ -376,7 +376,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     LOG_WRITE(LOG_INFO,"0==txout.txType");
 
                 }
-                else if(4==txout.txType || 5==txout.txType)
+				else if (4 == txout.txType || 5 == txout.txType || TXOUT_ADDTOKEN == txout.txType)
                 {
                     ECoinDialog::updatalist();
                     ECoinDialog::m_bNeedUpdateLater = true;
@@ -389,7 +389,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                         int vacc = txout.tokenRegLabel.accuracy;
                         num = getAccuracyNum(vacc,num);
                        }
-					else if(TXOUT_TOKENREG == txout.txType){
+					else if (TXOUT_ADDTOKEN == txout.txType){
 						y = (char*)(txout.addTokenLabel.TokenSymbol);
 						num = QString::number(txout.addTokenLabel.totalCount);//444
 						int vacc = txout.addTokenLabel.accuracy;
@@ -590,18 +590,16 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                         break;
 
                     }
-
-
-					else if (4 == txout.txType || 5 == txout.txType || TXOUT_TOKENREG == txout.txType)
+					else if (4 == txout.txType || 5 == txout.txType || TXOUT_ADDTOKEN == txout.txType)
                     {
                         ECoinDialog::updatalist();
                         ECoinDialog::m_bNeedUpdateLater = true;
                         sub.type = TransactionRecord::SendeCoin;
                         const CTxOut& txout = wtx.tx->vout[nOut];
-                        std::string y =(char*)(txout.tokenLabel.TokenSymbol);
+						std::string y = txout.getTokenSymbol();
                         //sub.amount = txout.tokenRegLabel.totalCount;
                         sub.ecoinType = y;
-                        sub.ecoinNum =QString::number(txout.tokenLabel.value);
+						sub.ecoinNum = QString::number(txout.GetTokenvalue());
                         int vacc = txout.tokenLabel.accuracy;
                         sub.ecoinNum = getAccuracyNum(vacc,sub.ecoinNum);
                         sub.address = CBitcoinAddress(address).ToString();
@@ -706,7 +704,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 else if(0==txout.txType)
                 {
                 }
-                else if(4==txout.txType || 5==txout.txType)
+				else if (4 == txout.txType || 5 == txout.txType || TXOUT_ADDTOKEN == txout.txType)
                 {
                     LOG_WRITE(LOG_INFO,"error date4");
                     break;
@@ -929,7 +927,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     else if(1==txout.txType)
                     {
                     }
-					else if (4 == txout.txType || 5 == txout.txType || TXOUT_TOKENREG == txout.txType)
+					else if (4 == txout.txType || 5 == txout.txType || TXOUT_ADDTOKEN == txout.txType)
                     {
                         m_isplusnOut++;
                         if(m_isplusnOut > 1)
@@ -947,9 +945,9 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                             sub.ecoinNum =QString::number(txout.tokenRegLabel.totalCount);
                             vacc = txout.tokenRegLabel.accuracy;
                         }
-						else if (TXOUT_TOKENREG == txout.txType){
+						else if (TXOUT_ADDTOKEN == txout.txType){
 							y = (char*)(txout.addTokenLabel.TokenSymbol);
-							sub.ecoinNum = QString::number(txout.addTokenLabel.totalCount);
+							sub.ecoinNum = QString::number(txout.addTokenLabel.currentCount);
 							vacc = txout.addTokenLabel.accuracy;
 						}
                         else{
