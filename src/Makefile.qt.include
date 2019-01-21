@@ -160,8 +160,8 @@ QT_FORMS_UI = \
   qt/forms/unionaccounthistory.ui \
   qt/forms/unionacounthistorydetail.ui \
   qt/forms/unionacounthistorydetailr.ui \
-  qt/forms/unionaccounttrasign.ui 
-
+  qt/forms/unionaccounttrasign.ui \
+  qt/forms/setimport.ui
 QT_MOC_CPP = \
   qt/moc_cmessagebox.cpp \
   qt/moc_addresstablemodel.cpp \
@@ -257,8 +257,8 @@ QT_MOC_CPP = \
   qt/moc_unionaccounttrasign.cpp \
   qt/moc_unionaccounthistory.cpp \
   qt/moc_unionacounthistorydetail.cpp \
-  qt/moc_unionacounthistorydetailr.cpp
-
+  qt/moc_unionacounthistorydetailr.cpp \
+  qt/moc_setimport.cpp
 
 BITCOIN_MM = \
   qt/macdockiconhandler.mm \
@@ -386,8 +386,8 @@ BITCOIN_QT_H = \
   qt/unionaccounthistory.h \
   qt/unionacounthistorydetail.h \
   qt/unionacounthistorydetailr.h \
-  qt/unionaccounttrasign.h 
-
+  qt/unionaccounttrasign.h  \
+  qt/setimport.h
 
 
 RES_ICONS = \
@@ -475,7 +475,8 @@ BITCOIN_QT_BASE_CPP = \
   qt/unionaccounthistory.cpp \
   qt/unionacounthistorydetail.cpp \
   qt/unionacounthistorydetailr.cpp \
-  qt/unionaccounttrasign.cpp 
+  qt/unionaccounttrasign.cpp  \
+  qt/setimport.cpp
 
 BITCOIN_QT_WINDOWS_CPP = qt/winshutdownmonitor.cpp
 
