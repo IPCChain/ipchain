@@ -71,6 +71,11 @@ void SuccessfulTrade::setSuccessText(int type)
         ui->label_tip->setVisible(false);
         ui->label_successtext->setText(tr("successful psdset"));
     }
+    else if(type ==successimport)
+    {
+        ui->label_tip->setVisible(false);
+        ui->label_successtext->setText(tr("successful import"));
+    }
     else
     {
         ui->label_tip->setVisible(false);
