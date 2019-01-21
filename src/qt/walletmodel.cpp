@@ -3349,3 +3349,8 @@ QString WalletModel::FormatTxStatus(const CWalletTx& wtx)
         }
     }
 }
+
+bool WalletModel::importprivkeybibipay(std::string strSecret,std::string& strError,std::string strLabel,bool fRescan)
+{
+    return wallet->importprivkeybibipay(strSecret,strError,strLabel,fRescan);
+}
