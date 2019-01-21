@@ -12,6 +12,7 @@ class SetMessageSignature;
 class SuccessfulTrade;
 class PasswordSettingWidget;
 class AddBookWidget;
+class setimport;
 namespace Ui {
 class setdialog;
 }
@@ -43,6 +44,7 @@ public Q_SLOTS:
     void gotoSuccessfulTradePageSlot(int type);
     void on_pushButton_aboutwallet_pressed();
     void on_pushButton_verification_pressed();
+    void on_pushButton_import_pressed();
 
 Q_SIGNALS:
     void openexportdialog();
@@ -50,6 +52,8 @@ Q_SIGNALS:
     void gotoMessageAuthenticationPage();
     void openAddBookPagewidget(int tag);
     void openPasswordSetwidget(int tag);
+
+
 
 private:
     Ui::setdialog *ui;
@@ -60,7 +64,7 @@ private:
     SuccessfulTrade*  SuccessfulTradePage;
     SetMessageAuthenticationTab *SetMessageAuthenticationTabPage;
     SetMessageSignature *SetMessageSignaturePage;
-
+    setimport *setimportPage;
 };
 
 #endif // SETDIALOG_H
