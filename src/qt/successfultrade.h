@@ -18,7 +18,8 @@ public:
         successtrade,
         successexport,
         successrevovery,
-        successpsdset
+        successpsdset,
+        successimport
     };
     void setSuccessText(int);
     void setsendSuccessText_(QString s1,QString s2);
