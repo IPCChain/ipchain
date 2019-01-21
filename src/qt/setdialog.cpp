@@ -8,7 +8,7 @@
 #include "setmessageauthenticationtab.h"
 #include "setmessagesignature.h"
 #include "clientversion.h"
-
+#include "setimport.h"
 setdialog::setdialog(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::setdialog)
@@ -22,6 +22,12 @@ setdialog::setdialog(QWidget *parent) :
     exportdialogPage = new exportdialog(this);
     walletStackBranchPage->addWidget(exportdialogPage);
     connect(exportdialogPage,SIGNAL(confirm(int)),this,SLOT(gotoSuccessfulTradePageSlot(int)));
+
+
+    setimportPage = new setimport(this);
+    walletStackBranchPage->addWidget(setimportPage);
+    connect(setimportPage,SIGNAL(confirm(int)),this,SLOT(gotoSuccessfulTradePageSlot(int)));
+
 
     SetRecoveryPage = new SetRecovery(this);
     connect(SetRecoveryPage,SIGNAL(success(int)),this,SLOT(gotoSuccessfulTradePageSlot(int)));
@@ -54,6 +60,8 @@ void setdialog::setModel(WalletModel *_model)
     SetRecoveryPage->setWalletModel(model);
     SetMessageAuthenticationTabPage->setModel(model);
     SetMessageSignaturePage->setModel(model);
+    setimportPage->setWalletModel(model);
+
 }
 void setdialog::on_pushButton_export_pressed()
 {
@@ -174,6 +182,14 @@ void setdialog::setButtonPic(QPushButton* btn)
     {
         ui->pushButton_pic_verification->hide();
     }
+    if(btn == ui->pushButton_pic_import)
+    {
+        ui->pushButton_pic_import->show();
+    }
+    else
+    {
+        ui->pushButton_pic_import->hide();
+    }
 }
 
 void setdialog::on_pushButton_aboutwallet_pressed()
@@ -195,4 +211,10 @@ void setdialog::gotoSetMessageSignaturePage()
 {
     setButtonPic(ui->pushButton_pic_verification);
     walletStackBranchPage->setCurrentWidget(SetMessageAuthenticationTabPage);
+}
+
+void setdialog::on_pushButton_import_pressed()
+{
+    setButtonPic(ui->pushButton_pic_import);
+    walletStackBranchPage->setCurrentWidget(setimportPage);
 }
