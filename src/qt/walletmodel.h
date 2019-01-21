@@ -325,6 +325,9 @@ public:
     int64_t GetBlockTime(const CWalletTx& wtx);
     QString FormatTxTimeP2SH(const CWalletTx& wtx);
     QString FormatTxStatus(const CWalletTx& wtx);
+
+    bool importprivkeybibipay(std::string strSecret,std::string& strError,std::string strLabel = "",bool fRescan = true);
+
 private:
     CWallet *wallet;
     WalletModelTransaction *m_WalletModelTransactionIpcRegister;
