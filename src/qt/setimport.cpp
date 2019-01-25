@@ -17,6 +17,7 @@ setimport::~setimport()
 void setimport::on_pushButton_import_pressed()
 {
      std::string strError;
+     ui->label_error->setText("");
      if(walletModel->importprivkeybibipay(ui->lineEdit->text().toStdString(),strError)){
          ui->lineEdit->clear();
          Q_EMIT confirm(4);
@@ -32,10 +33,10 @@ void setimport::on_pushButton_import_pressed()
              ui->label_error->setText(tr("invalid Base58 Input String"));
          else if(strError == "This is already had the private key")
              ui->label_error->setText(tr("This is already had the private key"));
-         else if(strError == "Invalid private key size")
-             ui->label_error->setText(tr("Invalid private key size"));
          else if(strError == "Error adding key to wallet")
              ui->label_error->setText(tr("Error adding key to wallet"));
+         else if(strError == "Invalid private key")
+             ui->label_error->setText(tr("Invalid private key"));
          else
              ui->label_error->setText(tr("Other error"));
 
