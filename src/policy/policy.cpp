@@ -630,7 +630,8 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 	CTransactionRef prevTx;
 	uint256 hashBlock;
 
-
+	bool token4 = false;
+	bool token6 = false;
 	int devoteinCount = 0;
 	int IPCinCount = 0;
 	int tokeninCount = 0;
@@ -783,6 +784,7 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 				
 			tokenInRegRecord[prev.tokenRegLabel.getTokenSymbol()] = prev.tokenRegLabel.totalCount;
 			tokeninCount++;
+			token4 = true;
 			break;
 
 		case 5:
@@ -809,7 +811,7 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 		case TXOUT_ADDTOKEN:
 
 			if (prev.nValue != 0)
-				return state.DoS(100, false, REJECT_INVALID, "Vin4-IPC-nValue-must-be-zero");
+				return state.DoS(100, false, REJECT_INVALID, "Vin6-IPC-nValue-must-be-zero");
 
 		//	if (tokenInRegRecord.count(prev.addTokenLabel.getTokenSymbol()) > 0)
 		//		return state.DoS(100, false, REJECT_INVALID, "bad-Token-Symbol-repeat");
@@ -837,7 +839,7 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 				tokenInRegRecord[prev.addTokenLabel.getTokenSymbol()] = prev.addTokenLabel.currentCount;
 			}
 
-
+			token6 = true;
 			tokeninCount++;
 			break;
 		default:
@@ -872,6 +874,7 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 	int tokenoutCount = 0;
 	uint64_t addtotalcount = 0;
 	uint64_t verifytotalcount = 0;
+	
 	int addtokenmodel = -1;
 	std::vector<CTxDestination> prevdestes;
 	std::string curaddress;
@@ -1059,7 +1062,7 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-tokensymbol-repeat");
 
 			tokenOutRegRecord[txout.tokenRegLabel.getTokenSymbol()] = txout.tokenRegLabel.totalCount;
-
+			token4 = true;
 			tokenoutCount++;
 			break;
 
@@ -1108,21 +1111,22 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 		case TXOUT_ADDTOKEN:
 
 			if (txout.nValue != 0)
-				return state.DoS(100, false, REJECT_INVALID, "Vout4-Token-nValue-must-be-zero");
+				return state.DoS(100, false, REJECT_INVALID, "Vout6-Token-nValue-must-be-zero");
 
 			checkStr = txout.addTokenLabel.getTokenSymbol();
 			boost::to_upper(checkStr);
 			if (checkStr.find("IPC") != std::string::npos || checkStr.find("RMB") != std::string::npos
 				|| checkStr.find("USD") != std::string::npos || checkStr.find("EUR") != std::string::npos)
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Symbol-contain-errvalue");
+			if (checkStr.empty())
+				return state.DoS(100, false, REJECT_INVALID, "Vout6-Token-Symbol-empty");
 			checkStr = txout.addTokenLabel.getTokenLabel();
 			boost::to_upper(checkStr);
 			if (checkStr.find("IPC") != std::string::npos || checkStr.find("RMB") != std::string::npos
 				|| checkStr.find("USD") != std::string::npos || checkStr.find("EUR") != std::string::npos)
 				return state.DoS(100, false, REJECT_INVALID, "bad-Token-Label-contain-errvalue");
-
 			if (checkStr.empty())
-				return state.DoS(100, false, REJECT_INVALID, "Vout6-Hash-Symbol-empty");
+				return state.DoS(100, false, REJECT_INVALID, "Vout6-Token-Label-empty");
 
 			if (txout.addTokenLabel.hash.GetHex().length() != 32)
 				return state.DoS(100, false, REJECT_INVALID, "Vout6-Hash-length-must-be-32");
@@ -1242,19 +1246,19 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 			}
 			
 
-			if (!paddTokenLabel.getTokenSymbol().empty()){
-				if (1 == addtokenmodel)
-					return state.DoS(100, false, REJECT_INVALID, "bad-Token-vouts-number");
+			if (!paddTokenLabel.IsNull()){
 				if (!addTokenClassCompare(paddTokenLabel, txout.addTokenLabel)){
 					return state.DoS(100, false, REJECT_INVALID, "bad-Token-vouts-Incompatible");
 				}
+				if (1 == addtokenmodel)
+					return state.DoS(100, false, REJECT_INVALID, "bad-Token-vouts-number");
 			}
 			else{
 				paddTokenLabel = txout.addTokenLabel;
 			}
 
-			if (addtokenmodel == 1 && tokenOutRegRecord.count(txout.addTokenLabel.getTokenSymbol()) > 0)
-				return state.DoS(100, false, REJECT_INVALID, "bad-Token-manualIssuanc-repeat");
+		//	if (addtokenmodel == 1 && tokenOutRegRecord.count(txout.addTokenLabel.getTokenSymbol()) > 0)
+		//		return state.DoS(100, false, REJECT_INVALID, "bad-Token-manualIssuanc-repeat");
 			//if (tokenOutRegRecord.count(txout.addTokenLabel.getTokenSymbol()) == 0)
 			//	tokenOutRegRecord[txout.addTokenLabel.getTokenSymbol()] = txout.addTokenLabel.totalCount;
 
@@ -1267,7 +1271,7 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 			else
 				tokenOutRegRecord[txout.addTokenLabel.getTokenSymbol()] = txout.addTokenLabel.currentCount;
 
-
+			token6 = true;
 			tokenoutCount++;
 		}
 			break;
@@ -1279,6 +1283,8 @@ bool AreIPCStandard(const CTransaction& tx, CValidationState &state)
 			return state.DoS(100, false, REJECT_INVALID, "can't-support-output-Type");
 		}
 	}
+	if (token4 && token6)
+		return state.DoS(100, false, REJECT_INVALID, "bad-Token-Reg-tokentype");
 	if (verifytotalcount != 0 && addtokenmodel == 0)
 		return state.DoS(100, false, REJECT_INVALID, "bad-Token-Reg-totalCount");
 	//Joint constraint. The same transaction cannot have any other two model outputs other than ordinary transactions.
