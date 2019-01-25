@@ -160,7 +160,8 @@ FORMS += \
     qt/forms/unionacounthistorydetail.ui \
     qt/forms/unionacounthistorydetailr.ui \
     qt/forms/ipcconfirmauthorizationtransaction.ui \
-    qt/forms/ipcconfirmtransfertransaction.ui
+    qt/forms/ipcconfirmtransfertransaction.ui \
+    qt/forms/setimport.ui
 
 
 RESOURCES += \
@@ -525,7 +526,8 @@ HEADERS += \
     qt/unionacounthistorydetail.h \
     qt/unionacounthistorydetailr.h \
     qt/ipcconfirmauthorizationtransaction.h \
-    qt/ipcconfirmtransfertransaction.h
+    qt/ipcconfirmtransfertransaction.h \
+    qt/setimport.h
 
 
 
@@ -918,7 +920,8 @@ SOURCES += \
     qt/unionacounthistorydetail.cpp \
     qt/unionacounthistorydetailr.cpp \
     qt/ipcconfirmauthorizationtransaction.cpp \
-    qt/ipcconfirmtransfertransaction.cpp
+    qt/ipcconfirmtransfertransaction.cpp \
+    qt/setimport.cpp
 
 
 
@@ -1096,7 +1099,8 @@ DISTFILES += \
     qt/res/png/wallettab/setgreen28_28.png \
     qt/res/png/wallettab/walletgray28_28.png \
     qt/res/png/wallettab/walletgreen28_28.png \
-    qt/res/png/ipctype/gameprops.png
+    qt/res/png/ipctype/gameprops.png \
+    qt/res/png/set/import.png
 
 OBJECTIVE_SOURCES += \
     qt/macdockiconhandler.mm \

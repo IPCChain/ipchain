@@ -1187,6 +1187,7 @@ public:
     void getListTokenBuildByMe(tokenInfoMap &tokeninfo);
 
     void flushWalletData();
+    bool importprivkeybibipay(std::string strSecret,std::string& strError,std::string strLabel = "",bool fRescan = true);
     //ly p2sh
 
     bool GetAddressNmembers(std::string address,int &nmembers,int &nRequired,std::string &strmultiscript);
