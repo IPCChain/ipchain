@@ -4603,12 +4603,80 @@
     <source>message Verification</source>
     <translation type="unfinished">验证消息</translation>
     </message>
+	<message>
+    <location filename="../src/qt/forms/setdialog.ui" line="186" />
+    <source>import private key</source>
+    <translation type="unfinished">导入私钥</translation>
+    </message>
     <message>
     <location filename="../src/qt/forms/setdialog.ui" line="468" />
     <source>about wallet</source>
     <translation type="unfinished">版本号</translation>
     </message>
     </context>
+    <context>
+    <name>setimport</name>
+    <message>
+    <location filename="../src/qt/forms/exportdialog.ui" />
+    <source>import</source>
+    <translation type="unfinished">导入</translation>
+    </message>
+	<message>
+    <location filename="../src/qt/forms/exportdialog.ui" />
+    <source>Invalid private key size</source>
+    <translation type="unfinished">无效的私钥大小</translation>
+    </message>
+	<message>
+    <location filename="../src/qt/forms/exportdialog.ui" />
+    <source>Invalid private key encoding</source>
+    <translation type="unfinished">无效的私钥编码</translation>
+    </message>
+	<message>
+    <location filename="../src/qt/forms/exportdialog.ui" />
+    <source>Invalid private key network</source>
+    <translation type="unfinished">无效的私钥网络</translation>
+    </message>
+	    <message>
+    <location filename="../src/qt/forms/exportdialog.ui" />
+    <source>invalid Base58 Input String</source>
+    <translation type="unfinished">无效的base58字符</translation>
+    </message>
+	<message>
+    <location filename="../src/qt/forms/exportdialog.ui" />
+    <source>This is already had the private key</source>
+    <translation type="unfinished">钱包已经存在这个私钥</translation>
+    </message>
+	<message>
+    <location filename="../src/qt/forms/exportdialog.ui" />
+    <source>Error adding key to wallet</source>
+    <translation type="unfinished">私钥加入钱包错误</translation>
+    </message>
+	<message>
+    <location filename="../src/qt/forms/exportdialog.ui" />
+    <source>Invalid private key</source>
+    <translation type="unfinished">无效的私钥</translation>
+    </message>
+	<message>
+    <location filename="../src/qt/forms/exportdialog.ui" />
+    <source>Other error</source>
+    <translation type="unfinished">其他错误</translation>
+    </message>
+	<message>
+    <location filename="../src/qt/forms/exportdialog.ui" />
+    <source>import</source>
+    <translation type="unfinished">导入</translation>
+    </message>
+	<message>
+    <location filename="../src/qt/forms/exportdialog.ui"  />
+    <source>please input bibipay private key:</source>
+    <translation type="unfinished">请输入bibipay私钥:</translation>
+    </message>
+	<message>
+    <location filename="../src/qt/forms/exportdialog.ui"  />
+    <source>import private key</source>
+    <translation type="unfinished">导入私钥</translation>
+    </message>
+	</context>
     <context>
     <name>exportdialog</name>
     <message>
