@@ -35,6 +35,7 @@
         <file>res/png/set/about.png</file>
         <file>res/png/set/addressbook.png</file>
         <file>res/png/set/export.png</file>
+	<file>res/png/set/import.png</file>
         <file>res/png/set/message.png</file>
         <file>res/png/set/recovery.png</file>
         <file>res/png/set/setpassword.png</file>
