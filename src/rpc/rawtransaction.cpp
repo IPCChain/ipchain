@@ -579,8 +579,9 @@ UniValue verifytxoutproof(const JSONRPCRequest& request)
         res.push_back(hash.GetHex());
     return res;
 }
-/*
-UniValue createrawtransaction(const JSONRPCRequest& request)
+/*./ipchain-cli -testnet  TESTcreaterawtransaction "[{\"txid\":\"a291eddeb9dc5dd13528b37d0c1f4ead87715b604283ac66876d3c99494f2aca\",\"vout\":0}]" "[{\"address\":\"TCBWcEXaTSmWVWFKGsftWedbCCKXpisVqYCo\",\"tokensymbol\":\"KKK1\",\"tokenhash\":\"11111111111111111111111111111111\",\"tokenlabel\":\"ss\",\"tokenissue\":1506787200,\"totalcount\":2000,\"accuracy\":2,\"version\":1,\"addmode\":1,\"height\":35000,\"currentCount\":200,\"extendinfo\":\"sd\",\"value\":0,\"txtype\":6,\"txLabel\":\"\"}]" 6
+*/
+UniValue TESTcreaterawtransaction(const JSONRPCRequest& request)
 {
 	if (request.fHelp || request.params.size() < 2 || request.params.size() > 3)
         throw runtime_error(
@@ -759,6 +760,13 @@ UniValue createrawtransaction(const JSONRPCRequest& request)
 			const UniValue& TokenValueObj = find_value(o, "tokenvalue");
 			const UniValue& TokenAccuracyObj = find_value(o, "accuracy");
 
+			//Addtoken
+			const UniValue& TokenVersionObj = find_value(o, "version");
+			const UniValue& TokenAddmodeObj = find_value(o, "addmode");
+			const UniValue& TokenHeightObj = find_value(o, "height");
+			const UniValue& TokenCurrentCountObj = find_value(o, "currentCount");
+			const UniValue& TokenExtendinfoObj = find_value(o, "extendinfo");
+
 			//Campaign - related values
 			const UniValue& devotetypeObj = find_value(o, "devotetype");
 			const UniValue& devotepubkeyhash160Obj = find_value(o, "devotepubkeyhash160");
@@ -766,6 +774,7 @@ UniValue createrawtransaction(const JSONRPCRequest& request)
 			IPCLabel ipcLabel;
 			DevoteLabel devoteLabel;
 			TokenRegLabel regLabel;
+			AddTokenLabel regaddLabel;
 			TokenLabel tokenlabel;
 			
 			std::string checkStr;
@@ -887,7 +896,64 @@ UniValue createrawtransaction(const JSONRPCRequest& request)
 				out = CTxOut(nAmount, scriptPubKey, tokenlabel,strtxLabel);
 				break;
 
-			
+			case 6: //AddToken test
+				if (!TokenSymbolObj.isStr() ||
+					!TokenHashObj.isStr() ||
+					!TokenLabelObj.isStr() ||
+					!TokenIssueObj.isNum() ||
+					!TokenTotalCountObj.isNum() ||
+					!TokenAccuracyObj.isNum()||
+					!TokenVersionObj.isNum() ||
+					!TokenAddmodeObj.isNum() ||
+					!TokenHeightObj.isNum() ||
+					!TokenCurrentCountObj.isNum() ||
+					!TokenExtendinfoObj.isStr() 
+				)
+				{
+					throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, Token Params is invalid");
+				}
+				//There are no various forms of ipc in Symbol and label
+				checkStr = TokenSymbolObj.get_str();
+				boost::to_upper(checkStr);
+				if (checkStr.find("IPC") != string::npos)
+				{
+					throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, TokenSymbol cannot contain IPC");
+				}
+				if (checkStr.size() > 8)
+					throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, TokenSymbol MaxLen = 8");
+
+				checkStr = TokenLabelObj.get_str();
+				boost::to_upper(checkStr);
+				if (checkStr.find("IPC") != string::npos)
+				{
+					throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, TokenLabel cannot contain IPC");
+				}
+				if (checkStr.size() > 16)
+					throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, TokenLabel MaxLen = 16");
+
+				//TokenHash
+				checkStr = TokenHashObj.get_str();
+				if (checkStr.size() > 32)
+					throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, TokenHash MaxLen = 32(16Byte)");
+
+
+				memcpy(regaddLabel.TokenSymbol, TokenSymbolObj.get_str().c_str(), TokenSymbolObj.get_str().size() > 8 ? 8 : TokenSymbolObj.get_str().size());
+
+				setTokenAddress.insert(make_pair(address, tokenlabel.getTokenSymbol()));
+
+				regaddLabel.hash.SetHex(TokenHashObj.get_str());
+				memcpy(regaddLabel.label, TokenLabelObj.get_str().c_str(), TokenLabelObj.get_str().size() > 16 ? 16 : TokenLabelObj.get_str().size());
+				regaddLabel.issueDate = TokenIssueObj.get_int();
+				regaddLabel.totalCount = TokenTotalCountObj.get_int64();
+				regaddLabel.accuracy = TokenAccuracyObj.get_int();
+				regaddLabel.version = TokenVersionObj.get_int64();
+				regaddLabel.addmode = TokenAddmodeObj.get_int64();
+				regaddLabel.height = TokenHeightObj.get_int64();
+				regaddLabel.currentCount = TokenCurrentCountObj.get_int64();
+				regaddLabel.extendinfo = TokenExtendinfoObj.get_str();
+
+				out = CTxOut(nAmount, scriptPubKey, regaddLabel, strtxLabel);
+				break;
 			case 0://General trading
 				setNormalAddress.insert(address);
 
@@ -916,7 +982,7 @@ UniValue createrawtransaction(const JSONRPCRequest& request)
 	unsigned int nBytes = GetVirtualTransactionSize(rawTx);
 	CAmount fee = pwalletMain->GetMinimumFee(nBytes, 8, mempool) * 2;
 	//Add a change
-	if (TxType == 4)
+	if (TxType == 4 || TxType == 6)
 	{
 		CAmount newoutvalue = nVinValue - totalvalue - AmountFromValue(100) - fee;
 		rawTx.vout[rawTx.vout.size() - 1].nValue = newoutvalue;
@@ -929,7 +995,7 @@ UniValue createrawtransaction(const JSONRPCRequest& request)
 
     return EncodeHexTx(rawTx);
 }
-*/
+
 UniValue createrawtransaction(const JSONRPCRequest& request)
 {
 	if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
@@ -1891,6 +1957,8 @@ static const CRPCCommand commands[] =
     { "rawtransactions",    "base58encodefromhexstring", &base58encodefromhexstring,  true,  {"hexstring"} },
 //    { "rawtransactions",    "gensystemaddress",			&gensystemaddress,  true,  {"hexstring"} },
 //	{ "rawtransactions",    "gensystemprivkey",			&gensystemprivkey,  true,  { "hexstring" } },
+	{ "rawtransactions", "TESTcreaterawtransaction", &TESTcreaterawtransaction, true, { "inputs", "outputs","type" } },
+
 };
 
 void RegisterRawTransactionRPCCommands(CRPCTable &t)
