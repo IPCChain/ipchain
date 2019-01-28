@@ -201,8 +201,10 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "addmultiadd", 2, "relatedtome" },
 	{ "getaddressutxos", 1, "type" },
 	{ "addtokenregtoaddress", 2, "addtokenreginfo" },
+	{ "TESTcreaterawtransaction", 0, "inputs" },
+	{ "TESTcreaterawtransaction", 1, "outputs" },
+	{ "TESTcreaterawtransaction", 2, "type" },
 	
-
 
 
 };
