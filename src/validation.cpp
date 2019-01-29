@@ -689,7 +689,7 @@ void AddTx2MapbyAddress(const CTransaction &tx,int blockIndex = -1)
 					case TXOUT_ADDTOKEN:
 						//Keep the symbol in token
 						data.strsymbol = prevout.addTokenLabel.getTokenSymbol();
-						data.tokenvalue = prevout.addTokenLabel.totalCount*-1;
+						data.tokenvalue = prevout.addTokenLabel.currentCount*-1;
 						break;
 					default:
 						break;
@@ -698,7 +698,7 @@ void AddTx2MapbyAddress(const CTransaction &tx,int blockIndex = -1)
 				{
 					pTxDB->Insert(pTxDB->db, (char*)(data.hash.GetHex().c_str()), (char*)(txhash.GetHex().c_str()));
 				}
-				if ((prevout.txType == 4 || prevout.txType == 5))
+				if ((prevout.txType == 4 || prevout.txType == 5 || prevout.txType == TXOUT_ADDTOKEN))
 				{
 					pTxDB->Insert(pTxDB->db, (char*)(data.strsymbol.c_str()), (char*)(txhash.GetHex().c_str()));
 				}
@@ -737,7 +737,7 @@ void AddTx2MapbyAddress(const CTransaction &tx,int blockIndex = -1)
 				case TXOUT_ADDTOKEN:
 					//Keep the symbol in token
 					data.strsymbol = output.addTokenLabel.getTokenSymbol();
-					data.tokenvalue = output.addTokenLabel.totalCount;
+					data.tokenvalue = output.addTokenLabel.currentCount;
 					break;
 				
 				default:
@@ -747,7 +747,7 @@ void AddTx2MapbyAddress(const CTransaction &tx,int blockIndex = -1)
 				{
 					pTxDB->Insert(pTxDB->db, (char*)(data.hash.GetHex().c_str()), (char*)(txhash.GetHex().c_str()));
 				}
-				if ((output.txType == 4 || output.txType == 5))
+				if ((output.txType == 4 || output.txType == 5 || output.txType == TXOUT_ADDTOKEN))
 				{
 					pTxDB->Insert(pTxDB->db, (char*)(data.strsymbol.c_str()), (char*)(txhash.GetHex().c_str()));
 				}
