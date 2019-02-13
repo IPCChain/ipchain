@@ -65,7 +65,9 @@ IPChain Core currently implements the following:
     git clone https://github.com/IPCChain/ipchain --recursive
     cd ipchain
 
+    ./autogen.sh
     ./configure 
+    ./configure --with-incompatible-bdb 
     make   
     make install 
 
