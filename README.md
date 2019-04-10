@@ -54,7 +54,7 @@ IPChain Core currently implements the following:
     sudo apt-get install libdb5.3++-dev
     sudo apt-get install qt4-dev-tools qt4-doc qt4-qtconfig qt4-demos qt4-designer
     sudo apt-get install libboost-all-dev
-    sudo apt-get gcc-multilib
+    sudo apt-get install gcc-multilib
     sudo apt-get install libprotobuf-dev
     sudo apt-get install libevent-dev
     sudo apt-get install protobuf-compiler
