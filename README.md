@@ -1,4 +1,3 @@
-<<<<<<< .mine
 # What is IPChain
 IPChain is a decentralized blockchain project built on Bitcoin's UTXO model, secured by proof of delegated proof of contribution consensus model, and support intellectual property protection and intellectual property business. It achieves this through the revolutionary extended transation model, effective consensus mechanize and so on. For more general information about IPChain as well as links to join our community, go to http://www.ipcchain.org
 
@@ -55,7 +54,7 @@ IPChain Core currently implements the following:
     sudo apt-get install libdb5.3++-dev
     sudo apt-get install qt4-dev-tools qt4-doc qt4-qtconfig qt4-demos qt4-designer
     sudo apt-get install libboost-all-dev
-    sudo apt-get gcc-multilib
+    sudo apt-get install gcc-multilib
     sudo apt-get install libprotobuf-dev
     sudo apt-get install libevent-dev
     sudo apt-get install protobuf-compiler
@@ -205,7 +204,7 @@ IPChain Core currently implements the following:
     sudo apt-get install libdb5.3++-dev
     sudo apt-get install qt4-dev-tools qt4-doc qt4-qtconfig qt4-demos qt4-designer
     sudo apt-get install libboost-all-dev
-    sudo apt-get gcc-multilib
+    sudo apt-get install gcc-multilib
     sudo apt-get install libprotobuf-dev
     sudo apt-get install libevent-dev
     sudo apt-get install protobuf-compiler
@@ -296,4 +295,3 @@ NOTE: Building with Qt4 is still supported, however, could result in a broken UI
 Then you can either run the command-line daemon using `src/ipchain` and `ipchain-cli`, or you can run the Qt GUI using `src/qt/ipchain-qt`
 # License
 IPChain is GPLv3 licensed.
->>>>>>> .r1517
