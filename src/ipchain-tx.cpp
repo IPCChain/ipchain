@@ -22,6 +22,7 @@
 #include "utilstrencodings.h"
 
 #include <stdio.h>
+#include <string>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/assign/list_of.hpp>
@@ -82,6 +83,7 @@ static int AppInitRawTx(int argc, char* argv[])
             _("Optionally add the \"W\" flag to produce a pay-to-witness-pubkey-hash output") + ". " +
             _("Optionally add the \"S\" flag to wrap the output in a pay-to-script-hash."));
         strUsage += HelpMessageOpt("outdata=[VALUE:]DATA", _("Add data-based output to TX"));
+        strUsage += HelpMessageOpt("token=TOKEN:VALUE:ACCURACY:ADDRESS", _("Add token output to TX"));
         strUsage += HelpMessageOpt("outscript=VALUE:SCRIPT[:FLAGS]", _("Add raw script output to TX") + ". " +
             _("Optionally add the \"W\" flag to produce a pay-to-witness-script-hash output") + ". " +
             _("Optionally add the \"S\" flag to wrap the output in a pay-to-script-hash."));
@@ -200,6 +202,45 @@ static void MutateTxLocktime(CMutableTransaction& tx, const std::string& cmdVal)
         throw std::runtime_error("Invalid TX locktime requested");
 
     tx.nLockTime = (unsigned int) newLocktime;
+}
+
+static void MutateTokenTxAddInput(CMutableTransaction& tx, const std::string& strInput)
+{
+    // Separate into VALUE:ADDRESS
+    std::vector<std::string> vStrInputParts;
+    boost::split(vStrInputParts, strInput, boost::is_any_of(":"));
+
+    if (vStrInputParts.size() != 4)
+        throw std::runtime_error("TX token output missing or too many separators");
+
+    // Extract and validate VALUE
+    CAmount valueIpc = 0;
+    std::string tokenSymbol = vStrInputParts[0];
+    int accuracy = stoi(vStrInputParts[2]);
+    //cout << "accuracy :" << accuracy  << "\r\n";
+    CAmount valueToken = stod(vStrInputParts[1]) * pow(10, accuracy);
+    //cout << "valueToken :"<< valueToken << "hello" << "\r\n";
+    // extract and validate ADDRESS
+    
+    std::string strAddr = vStrInputParts[3];
+    CBitcoinAddress addr(strAddr);
+    if (!addr.IsValid())
+        throw std::runtime_error("invalid TX token output address");
+    // build standard output script via GetScriptForDestination()
+    CScript scriptPubKey = GetScriptForDestination(addr.Get());
+
+    // construct TxOut, append to transaction output list
+    TokenLabel tokenLableIn;
+    tokenLableIn.value = valueToken;
+    tokenLableIn.accuracy = accuracy;
+    const char* symbolStr = tokenSymbol.c_str();
+    for (int i = 0; i < sizeof( tokenLableIn.TokenSymbol) && i < tokenSymbol.length(); i++)
+    {
+        tokenLableIn.TokenSymbol[i] = symbolStr[i];
+    }
+     
+    CTxOut txout(valueIpc, scriptPubKey, tokenLableIn, "");
+    tx.vout.push_back(txout);
 }
 
 static void MutateTxAddInput(CMutableTransaction& tx, const std::string& strInput)
@@ -667,7 +708,8 @@ static void MutateTx(CMutableTransaction& tx, const std::string& command,
         MutateTxDelInput(tx, commandVal);
     else if (command == "in")
         MutateTxAddInput(tx, commandVal);
-
+    else if (command == "token")
+        MutateTokenTxAddInput(tx, commandVal);
     else if (command == "delout")
         MutateTxDelOutput(tx, commandVal);
     else if (command == "outaddr")
