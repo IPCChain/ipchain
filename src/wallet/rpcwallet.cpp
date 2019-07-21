@@ -5665,7 +5665,8 @@ UniValue exportwallet(const JSONRPCRequest& request)
 	CWallet::ExportWalletToFile(request.params[0].get_str());
 	return NullUniValue;
 }
- UniValue getListTokenBuildByMe(const JSONRPCRequest& request)
+
+UniValue getListTokenBuildByMe(const JSONRPCRequest& request)
 {
 
         if (!EnsureWalletIsAvailable(request.fHelp))
