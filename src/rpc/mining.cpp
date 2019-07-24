@@ -505,6 +505,7 @@ UniValue setdpocaccount(const JSONRPCRequest& request)
 	if (request.fHelp || request.params.size() != 1)	throw runtime_error(
 		"setdpocaccount address  \n"
 		"\nGet dpoc list of consusen Accoutn )\n"
+		"\nSet dpoc account to dpoc_info.\n"
 		"\nArguments:\n"
 		"1. address      address for start .\n"
 
@@ -512,7 +513,7 @@ UniValue setdpocaccount(const JSONRPCRequest& request)
 		"[]     (array) blank\n"
 		"\nExamples:\n"
 		" setdpocaccount  ZCBXXXXXXXXXXXXXXX \n"
-		+ HelpExampleCli("getdpoclist", "10")
+		+ HelpExampleCli("setdpocaccount", "ZCBXXXXXXXXXXXXXXX")
 	);
 	
 	CBitcoinAddress address(request.params[0].get_str());
@@ -607,54 +608,6 @@ UniValue getdpoclist(const JSONRPCRequest& request)
 		CConsensusAccount *acount = iter->get();
 		obj.push_back(Pair("publickeyhash", acount->getPubicKey160hash().GetHex()));
 		obj.push_back(Pair("credit", acount->getCredit()));
-
-// 		CKeyID publickeyID(acount->getPubicKey160hash());
-// 		CPubKey vchPubKeyOut;
-// 
-// 		if (pwalletMain->GetPubKey(publickeyID, vchPubKeyOut))
-// 		{
-// 			std::cout << "public keyhash=" << vchPubKeyOut.GetHash().ToString() <<std::endl ;
-// 		}
-// 		else {
-// 			std::cout << "Not public key=" << std::endl;
-// 		} 
-// 
-// 			
-// 		CKey vchPrivKeyOut;
-// 		if (pwalletMain->GetKey(publickeyID, vchPrivKeyOut))
-// 		{
-// 			std::cout << "....vchPrivKeyOut .......... find ...." << std::endl;
-// 		}
-// 		else {
-// 			std::cout << "Not vchPrivKeyOut key=" << std::endl;
-// 			continue;
-// 		}
-// 
-// 		std::string str = "Bitcoin key verification\n";
-// 		//GetRandBytes(rnd, sizeof(rnd));
-// 		uint256 hash;
-// 
-// 		CHash256().Write((unsigned char*)str.data(), str.size()).Finalize(hash.begin());
-// 		std::vector<unsigned char> vchSig;
-// 		vchPrivKeyOut.Sign(hash, vchSig);
-// 		if (vchPubKeyOut.Verify(hash, vchSig))
-// 		{
-// 			std::cout << "chPubKeyOut.Verify  is OK" << std::endl;
-// 		}
-// 		else {
-// 			std::cout << "chPubKeyOut.Verify  is error" << std::endl;
-// 		}
-// 
-// 		vchSig[0] = 1;
-// 		vchSig[1] = 1;
-// 		vchSig[2] = 1;
-// 		if (vchPubKeyOut.Verify(hash, vchSig))
-// 		{
-// 			std::cout << "vchSig.push_back CCC; chPubKeyOut.Verify  is OK" << std::endl;
-// 		}
-// 		else {
-// 			std::cout << "vchSig.push_back CCC; chPubKeyOut.Verify  is error" << std::endl;
-// 		}
 		
 
 	}
@@ -1417,9 +1370,9 @@ static const CRPCCommand commands[] =
   //  --------------------- ------------------------  -----------------------  ----------
     { "mining",             "getnetworkhashps",       &getnetworkhashps,       true,  {"nblocks","height"} },
     { "mining",             "getmininginfo",          &getmininginfo,          true,  {} },
-    { "mining",             "prioritisetransaction",  &prioritisetransaction,  true,  {"txid","priority_delta","fee_delta"} },
-    { "mining",             "getblocktemplate",       &getblocktemplate,       true,  {"template_request"} },
-    { "mining",             "submitblock",            &submitblock,            true,  {"hexdata","parameters"} },
+    { "hidden",             "prioritisetransaction",  &prioritisetransaction,  true,  {"txid","priority_delta","fee_delta"} },
+    { "hidden",             "getblocktemplate",       &getblocktemplate,       true,  {"template_request"} },
+    { "hidden",             "submitblock",            &submitblock,            true,  {"hexdata","parameters"} },
 
     { "generating",         "generate",               &generate,               true,  {"nblocks","maxtries"} },
 	{ "generating",         "generatedpoc",           &generatedpoc,           true,  {"nblocks","nPeriodCount","nPeriodStartTime","nTimePeriod" } },
@@ -1432,10 +1385,10 @@ static const CRPCCommand commands[] =
 	{ "util",             "getcurrentmindeposi",		&getcurrentmindeposi,		true,{ "address" } },
 	{ "util",             "checkdeposi",                &checkdeposi,               true,{ "nPeriodCount","nCredit" } },
 
-    { "util",               "estimatefee",            &estimatefee,            true,  {"nblocks"} },
-    { "util",               "estimatepriority",       &estimatepriority,       true,  {"nblocks"} },
-    { "util",               "estimatesmartfee",       &estimatesmartfee,       true,  {"nblocks"} },
-    { "util",               "estimatesmartpriority",  &estimatesmartpriority,  true,  {"nblocks"} },
+    { "hidden",               "estimatefee",            &estimatefee,            true,  {"nblocks"} },
+    { "hidden",               "estimatepriority",       &estimatepriority,       true,  {"nblocks"} },
+    { "hidden",               "estimatesmartfee",       &estimatesmartfee,       true,  {"nblocks"} },
+    { "hidden",               "estimatesmartpriority",  &estimatesmartpriority,  true,  {"nblocks"} },
 };
 
 void RegisterMiningRPCCommands(CRPCTable &t)
