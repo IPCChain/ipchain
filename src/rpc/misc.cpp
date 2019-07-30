@@ -116,19 +116,19 @@ UniValue getinfo(const JSONRPCRequest& request)
     return obj;
 }
 
-UniValue getIPCversion(const JSONRPCRequest& request)
+UniValue getipcversion(const JSONRPCRequest& request)
 {
 	if (request.fHelp || request.params.size() != 0)
 		throw runtime_error(
-		"getIPCversion\n"
+		"getipcversion(getIPCversion)\n"
 		"\nDEPRECATED. Returns an object containing various state info.\n"
 		"\nResult:\n"
 		"{\n"
 		"  \"version\": xxxxx,           (string) the IPChain version\n"
 		"}\n"
 		"\nExamples:\n"
-		+ HelpExampleCli("getIPCversion", "")
-		+ HelpExampleRpc("getIPCversion", "")
+		+ HelpExampleCli("getipcversion", "")
+		+ HelpExampleRpc("getipcversion", "")
 		);
 
 #ifdef ENABLE_WALLET
@@ -812,7 +812,7 @@ UniValue gettokenbalancebyaddress(const JSONRPCRequest& request)
 		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No support!");
 	}
 	std::string straddress = request.params[0].get_str();
-	if (straddress.length() != 36)
+	if (straddress.length() != 36 && straddress.length() != 35)
 	{
 		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invailed address!");
 	}
@@ -839,7 +839,8 @@ static const CRPCCommand commands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------
     { "control",            "getinfo",                &getinfo,                true,  {} }, /* uses wallet if enabled */
-	{ "control",			"getIPCversion",		  &getIPCversion,		   true, {} }, /* uses wallet if enabled */
+	{ "hidden",				"getIPCversion",			&getipcversion, true, {} }, /* uses wallet if enabled */
+	{ "control",			"getipcversion",			&getipcversion, true, {} },
     { "control",            "getmemoryinfo",          &getmemoryinfo,          true,  {} },
     { "util",               "validateaddress",        &validateaddress,        true,  {"address"} }, /* uses wallet if enabled */
 //    { "util",               "createmultisig",         &createmultisig,         true,  {"nrequired","keys"} },
