@@ -168,7 +168,7 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
 		case 4:
 			{
 				  out.push_back(Pair("TokenSymbol", txout.tokenRegLabel.getTokenSymbol()));
-				  out.push_back(Pair("TokenValue", txout.tokenRegLabel.value));
+				  out.push_back(Pair("TokenValue", uint64_t(0)/*txout.tokenRegLabel.value*/));
 				  out.push_back(Pair("TokenHash", txout.tokenRegLabel.hash.GetHex()));
 				  out.push_back(Pair("TokenLabel", txout.tokenRegLabel.getTokenLabel()));
 				  out.push_back(Pair("TokenIssue", txout.tokenRegLabel.issueDate));
@@ -1044,7 +1044,7 @@ UniValue createrawtransaction(const JSONRPCRequest& request)
 	rawTx.vout.push_back(newout);
 
 	if (!(pwalletMain->DummySignTx(rawTx, setCoins))) {
-		throw JSONRPCError(RPC_INVALID_PARAMETER, "DummySignTx erro!");
+		throw JSONRPCError(RPC_INVALID_PARAMETER, "DummySignTx error!");
 	}
 	unsigned int nBytes = GetVirtualTransactionSize(rawTx);
 	CAmount fee = pwalletMain->GetMinimumFee(nBytes, 8, mempool);
@@ -1064,11 +1064,11 @@ UniValue createrawtransaction(const JSONRPCRequest& request)
 	return EncodeHexTx(rawTx);
 }
 
-UniValue createrawtransactionForIsolation(const JSONRPCRequest& request)
+UniValue createrawtransactionforisolation(const JSONRPCRequest& request)
 {
 	if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
 		throw runtime_error(
-		"createrawtransactionForIsolation [{\"txid\":\"id\",\"vout\":n},...] {\"address\":amount,...} \n"
+		"createrawtransactionforisolation(createrawtransactionForIsolation) [{\"txid\":\"id\",\"vout\":n},...] {\"address\":amount,...} \n"
 		"\nCreate a transaction spending the given inputs and creating new outputs.\n"
 		"Outputs can be addresses .\n"
 		"Returns hex-encoded raw transaction.\n"
@@ -1095,8 +1095,8 @@ UniValue createrawtransactionForIsolation(const JSONRPCRequest& request)
 		"\"transaction\"              (string) hex string of the transaction\n"
 
 		"\nExamples:\n"
-		+ HelpExampleCli("createrawtransactionForIsolation", "\"[{\\\"amount\\\":2.00000000,\\\"scriptPubKey\\\":\\\"2103fd90d60174ba0351edd1fa299fcf88b16c1433afe16b882c3a268062d9a4fc38ac\\\",\\\"txid\\\":\\\"myid\\\",\\\"vout\\\":0}]\" \"{\\\"address\\\":0.01}\"")
-		+ HelpExampleRpc("createrawtransactionForIsolation", "\"[{\\\"amount\\\":2.00000000,\\\"scriptPubKey\\\":\\\"2103fd90d60174ba0351edd1fa299fcf88b16c1433afe16b882c3a268062d9a4fc38ac\\\",\\\"txid\\\":\\\"myid\\\",\\\"vout\\\":0}]\", \"{\\\"address\\\":0.01}\"")
+		+ HelpExampleCli("createrawtransactionforisolation", "\"[{\\\"amount\\\":2.00000000,\\\"scriptPubKey\\\":\\\"2103fd90d60174ba0351edd1fa299fcf88b16c1433afe16b882c3a268062d9a4fc38ac\\\",\\\"txid\\\":\\\"myid\\\",\\\"vout\\\":0}]\" \"{\\\"address\\\":0.01}\"")
+		+ HelpExampleRpc("createrawtransactionforisolation", "\"[{\\\"amount\\\":2.00000000,\\\"scriptPubKey\\\":\\\"2103fd90d60174ba0351edd1fa299fcf88b16c1433afe16b882c3a268062d9a4fc38ac\\\",\\\"txid\\\":\\\"myid\\\",\\\"vout\\\":0}]\", \"{\\\"address\\\":0.01}\"")
 		);
 
 	RPCTypeCheck(request.params, boost::assign::list_of(UniValue::VARR)(UniValue::VOBJ), true);
@@ -1828,7 +1828,8 @@ static const CRPCCommand commands[] =
   //  --------------------- ------------------------  -----------------------  ----------
     { "rawtransactions",    "getrawtransaction",      &getrawtransaction,      true,  {"txid","verbose"} },
     { "rawtransactions",    "createrawtransaction",   &createrawtransaction,   true,  {"inputs","outputs"} },
-	{ "rawtransactions", "createrawtransactionForIsolation", &createrawtransactionForIsolation, true, { "inputs", "outputs" } },
+	{ "hidden",				"createrawtransactionForIsolation", &createrawtransactionforisolation, true, { "inputs", "outputs" } },
+	{ "rawtransactions",	"createrawtransactionforisolation", &createrawtransactionforisolation, true, { "inputs", "outputs" } },
     { "rawtransactions",    "decoderawtransaction",   &decoderawtransaction,   true,  {"hexstring"} },
     { "rawtransactions",    "decodescript",           &decodescript,           true,  {"hexstring"} },
     { "rawtransactions",    "sendrawtransaction",     &sendrawtransaction,     false, {"hexstring","allowhighfees"} },
