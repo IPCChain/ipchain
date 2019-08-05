@@ -504,13 +504,12 @@ UniValue setdpocaccount(const JSONRPCRequest& request)
 {
 	if (request.fHelp || request.params.size() != 1)	throw runtime_error(
 		"setdpocaccount address  \n"
-		"\nGet dpoc list of consusen Accoutn )\n"
 		"\nSet dpoc account to dpoc_info.\n"
 		"\nArguments:\n"
 		"1. address      address for start .\n"
 
 		"\nResult:\n"
-		"[]     (array) blank\n"
+		"0\n"
 		"\nExamples:\n"
 		" setdpocaccount  ZCBXXXXXXXXXXXXXXX \n"
 		+ HelpExampleCli("setdpocaccount", "ZCBXXXXXXXXXXXXXXX")
